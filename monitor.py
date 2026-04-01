@@ -1,0 +1,437 @@
+"""
+Court Hearing Monitor v2 — Моніторинг судових засідань
+CSV ДСА → фільтрація → Notion (⚖️ Засідання) + Telegram
+"""
+
+import csv
+import json
+import os
+import sys
+import hashlib
+import logging
+from datetime import datetime, timedelta
+from io import StringIO
+from pathlib import Path
+
+import requests
+
+# ─── Config ───────────────────────────────────────────────────────
+
+CSV_URL_DSA = (
+    "https://dsa.court.gov.ua/storage/portal/open_data_files/"
+    "91509/513/8faabdb91244be394947eb26f2153a1f.csv"
+)
+CSV_URL_DATA_GOV = (
+    "https://data.gov.ua/dataset/42eaff6e-45da-4426-b4a1-f30989bfd36f/"
+    "resource/98d6ba0d-1c18-4835-ae68-bfc0af724bfa/download/"
+    "spisok-sprav-priznachenih-do-rozglyadu.csv"
+)
+
+CONFIG_FILE = Path(__file__).parent / "config.json"
+STATE_FILE = Path(__file__).parent / "state.json"
+
+# Notion database ID for ⚖️ Засідання
+NOTION_HEARINGS_DB = "1cb005324ce44910b3a31d7599ba7505"
+
+# Column name candidates (CSV format may vary)
+CASE_NUMBER_COLS = [
+    "Номер справи", "номер справи", "case_number",
+    "Номер_справи", "НОМЕР СПРАВИ", "№ справи",
+]
+DATE_COLS = [
+    "Дата засідання", "дата засідання", "Дата", "дата",
+    "hearing_date", "Дата/Час", "Дата_засідання",
+]
+TIME_COLS = [
+    "Час засідання", "час засідання", "Час", "час",
+    "hearing_time", "Час_засідання",
+]
+JUDGE_COLS = [
+    "Суддя", "суддя", "judge", "Суддя-доповідач",
+    "Головуючий суддя", "Склад суду",
+]
+COURT_COLS = [
+    "Суд", "суд", "Назва суду", "court",
+    "court_name", "Найменування суду",
+]
+SUBJECT_COLS = [
+    "Предмет позову", "предмет позову", "Предмет",
+    "Опис", "subject", "Обвинувачення",
+]
+HALL_COLS = [
+    "Зал", "зал", "Номер залу", "hall", "Зал судового засідання",
+]
+FORM_COLS = [
+    "Форма судочинства", "форма судочинства",
+    "Форма", "form", "jurisdiction_form",
+]
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+log = logging.getLogger("court-monitor")
+
+
+# ─── Helpers ──────────────────────────────────────────────────────
+
+def load_config() -> dict:
+    if not CONFIG_FILE.exists():
+        log.error(f"Config not found: {CONFIG_FILE}")
+        sys.exit(1)
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    # Env vars override config (for GitHub Secrets)
+    for key in [
+        "telegram_bot_token", "telegram_chat_id",
+        "notion_token", "notion_database_id",
+    ]:
+        env_key = key.upper()
+        if os.environ.get(env_key):
+            config[key] = os.environ[env_key]
+    # Default Notion DB to hardcoded value
+    if not config.get("notion_database_id"):
+        config["notion_database_id"] = NOTION_HEARINGS_DB
+    return config
+
+
+def load_state() -> dict:
+    if STATE_FILE.exists():
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {"hearings": {}, "last_run": None}
+
+
+def save_state(state: dict):
+    state["last_run"] = datetime.now().isoformat()
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+def find_column(headers: list[str], candidates: list[str]) -> str | None:
+    headers_lower = [h.strip().lower() for h in headers]
+    for c in candidates:
+        if c.lower() in headers_lower:
+            return headers[headers_lower.index(c.lower())].strip()
+    return None
+
+
+def hearing_id(row: dict, cm: dict) -> str:
+    key = f"{row.get(cm['case'], '')}|{row.get(cm['date'], '')}"
+    if cm["time"]:
+        key += f"|{row.get(cm['time'], '')}"
+    return hashlib.md5(key.encode()).hexdigest()
+
+
+# ─── CSV Download & Parse ────────────────────────────────────────
+
+def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
+    case_set = set(cn.strip() for cn in case_numbers)
+    log.info(f"Monitoring {len(case_set)} cases")
+
+    for url in [CSV_URL_DSA, CSV_URL_DATA_GOV]:
+        try:
+            log.info(f"Downloading: {url[:60]}...")
+            resp = requests.get(url, stream=True, timeout=300)
+            resp.raise_for_status()
+            break
+        except requests.RequestException as e:
+            log.warning(f"Failed: {e}")
+            continue
+    else:
+        log.error("All CSV sources failed!")
+        return [], {}
+
+    # Detect encoding
+    enc = "utf-8"
+    ct = resp.headers.get("content-type", "")
+    if "1251" in ct or "windows" in ct:
+        enc = "windows-1251"
+
+    # Read header
+    lines = resp.iter_lines(decode_unicode=False)
+    raw_header = next(lines)
+    for try_enc in [enc, "utf-8", "windows-1251", "cp1251"]:
+        try:
+            header_text = raw_header.decode(try_enc)
+            enc = try_enc
+            break
+        except (UnicodeDecodeError, LookupError):
+            continue
+    else:
+        header_text = raw_header.decode("utf-8", errors="replace")
+
+    delim = ";" if ";" in header_text else ","
+    headers = [
+        h.strip().strip("\ufeff")
+        for h in next(csv.reader(StringIO(header_text), delimiter=delim))
+    ]
+    log.info(f"Columns ({len(headers)}): {headers[:8]}...")
+
+    # Save headers for debug
+    with open(Path(__file__).parent / "debug_headers.json", "w", encoding="utf-8") as f:
+        json.dump(headers, f, ensure_ascii=False, indent=2)
+
+    cm = {
+        "case": find_column(headers, CASE_NUMBER_COLS),
+        "date": find_column(headers, DATE_COLS),
+        "time": find_column(headers, TIME_COLS),
+        "judge": find_column(headers, JUDGE_COLS),
+        "court": find_column(headers, COURT_COLS),
+        "subject": find_column(headers, SUBJECT_COLS),
+        "hall": find_column(headers, HALL_COLS),
+        "form": find_column(headers, FORM_COLS),
+    }
+
+    if not cm["case"]:
+        log.error(f"Case number column not found! Headers: {headers}")
+        return [], {}
+    log.info(f"Mapping: {cm}")
+
+    # Stream & filter
+    matches = []
+    total = 0
+    for raw in lines:
+        total += 1
+        if total % 500_000 == 0:
+            log.info(f"  {total:,} rows, {len(matches)} matches...")
+        try:
+            line = raw.decode(enc, errors="replace")
+        except Exception:
+            continue
+        if not any(cn in line for cn in case_set):
+            continue
+        try:
+            vals = next(csv.reader(StringIO(line), delimiter=delim))
+            row = dict(zip(headers, vals))
+        except Exception:
+            continue
+        if row.get(cm["case"], "").strip() in case_set:
+            matches.append(row)
+
+    log.info(f"Done: {total:,} rows, {len(matches)} matches")
+    return matches, cm
+
+
+# ─── Telegram ────────────────────────────────────────────────────
+
+def send_telegram(token: str, chat_id: str, msg: str):
+    if not token or not chat_id:
+        return
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={
+                "chat_id": chat_id,
+                "text": msg,
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+            timeout=10,
+        )
+        r.raise_for_status()
+        log.info("Telegram: sent")
+    except requests.RequestException as e:
+        log.error(f"Telegram failed: {e}")
+
+
+def format_tg_message(row: dict, cm: dict) -> str:
+    g = lambda k: row.get(cm[k], "").strip() if cm[k] else "—"
+    msg = f"⚖️ <b>Нове засідання</b>\n📋 Справа: <code>{g('case')}</code>\n📅 Дата: <b>{g('date')}</b>"
+    if cm["time"] and g("time"):
+        msg += f" о <b>{g('time')}</b>"
+    msg += f"\n🏛 Суд: {g('court')}\n👨‍⚖️ Суддя: {g('judge')}"
+    if cm["hall"] and g("hall"):
+        msg += f"\n🚪 Зал: {g('hall')}"
+    if cm["subject"] and g("subject"):
+        msg += f"\n📝 {g('subject')[:200]}"
+    return msg
+
+
+# ─── Notion ──────────────────────────────────────────────────────
+
+def parse_date(date_str: str) -> str | None:
+    """Parse date string to ISO format."""
+    for fmt in ["%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"]:
+        try:
+            return datetime.strptime(date_str.strip(), fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return None
+
+
+def map_form(form_str: str) -> str | None:
+    """Map CSV form value to Notion select option."""
+    form_lower = form_str.lower().strip()
+    mapping = {
+        "цивільн": "цивільне",
+        "кримінал": "кримінальне",
+        "адмін": "адміністративне",
+        "господар": "господарське",
+        "купап": "купап",
+        "адміністративн": "адміністративне",
+    }
+    for key, val in mapping.items():
+        if key in form_lower:
+            return val
+    return None
+
+
+def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict):
+    """Create a page in ⚖️ Засідання database."""
+    if not token or not db_id:
+        log.warning("Notion not configured")
+        return
+
+    g = lambda k: row.get(cm[k], "").strip() if cm[k] else ""
+
+    case_num = g("case")
+    date_str = g("date")
+    time_str = g("time")
+    court = g("court")
+    judge = g("judge")
+    hall = g("hall")
+    subject = g("subject")
+    form = g("form")
+
+    # Build title
+    title = f"Засідання {case_num}"
+    if date_str:
+        title += f" — {date_str}"
+
+    # Properties matching ⚖️ Засідання schema
+    props = {
+        "Подія": {
+            "title": [{"text": {"content": title}}]
+        },
+        "Номер справи": {
+            "rich_text": [{"text": {"content": case_num}}]
+        },
+        "Статус": {
+            "select": {"name": "заплановано"}
+        },
+        "Джерело": {
+            "select": {"name": "auto: CSV ДСА"}
+        },
+    }
+
+    # Date
+    iso_date = parse_date(date_str) if date_str else None
+    if iso_date:
+        props["Дата засідання"] = {"date": {"start": iso_date}}
+
+    # Text fields
+    for prop, val in [
+        ("Суд", court),
+        ("Суддя", judge),
+        ("Зал", hall),
+        ("Предмет", subject[:2000] if subject else ""),
+        ("Час", time_str),
+    ]:
+        if val:
+            props[prop] = {"rich_text": [{"text": {"content": val}}]}
+
+    # Form of proceedings
+    if form:
+        notion_form = map_form(form)
+        if notion_form:
+            props["Форма судочинства"] = {"select": {"name": notion_form}}
+
+    # Create page
+    try:
+        r = requests.post(
+            "https://api.notion.com/v1/pages",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Notion-Version": "2022-06-28",
+            },
+            json={
+                "parent": {"database_id": db_id},
+                "properties": props,
+            },
+            timeout=15,
+        )
+        if r.status_code == 200:
+            log.info(f"Notion: created hearing for {case_num}")
+        else:
+            log.warning(f"Notion error {r.status_code}: {r.text[:300]}")
+    except requests.RequestException as e:
+        log.error(f"Notion failed: {e}")
+
+
+# ─── Main ────────────────────────────────────────────────────────
+
+def main():
+    log.info("=" * 50)
+    log.info("Court Hearing Monitor v2")
+    log.info("=" * 50)
+
+    config = load_config()
+    state = load_state()
+    cases = config.get("case_numbers", [])
+
+    if not cases:
+        log.error("No case numbers in config!")
+        sys.exit(1)
+
+    rows, cm = download_and_filter(cases)
+
+    if not cm:
+        send_telegram(
+            config.get("telegram_bot_token", ""),
+            config.get("telegram_chat_id", ""),
+            "⚠️ <b>Court Monitor:</b> Не вдалося розпізнати колонки CSV. "
+            "Перевірте debug_headers.json",
+        )
+        sys.exit(1)
+
+    if not rows:
+        log.info("No hearings found")
+        save_state(state)
+        return
+
+    # Find new hearings
+    known = state.get("hearings", {})
+    new_items = []
+
+    for row in rows:
+        hid = hearing_id(row, cm)
+        if hid not in known:
+            new_items.append(row)
+            known[hid] = {
+                "case": row.get(cm["case"], ""),
+                "date": row.get(cm["date"], "") if cm["date"] else "",
+                "seen": datetime.now().isoformat(),
+            }
+
+    log.info(f"Total: {len(rows)}, New: {len(new_items)}")
+
+    if new_items:
+        for row in new_items:
+            # Telegram notification to you
+            send_telegram(
+                config.get("telegram_bot_token", ""),
+                config.get("telegram_chat_id", ""),
+                format_tg_message(row, cm),
+            )
+            # Notion: create hearing page
+            create_notion_hearing(
+                config.get("notion_token", ""),
+                config.get("notion_database_id", NOTION_HEARINGS_DB),
+                row,
+                cm,
+            )
+
+    # Clean old entries (90 days)
+    cutoff = (datetime.now() - timedelta(days=90)).isoformat()
+    state["hearings"] = {
+        k: v for k, v in known.items()
+        if v.get("seen", "9999") > cutoff
+    }
+    save_state(state)
+    log.info("Done!")
+
+
+if __name__ == "__main__":
+    main()

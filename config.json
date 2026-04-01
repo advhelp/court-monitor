@@ -1,0 +1,12 @@
+{
+  "case_numbers": [
+    "ЗАМІНИ/НА/СВОЇ",
+    "199/1234/24",
+    "320/5678/25"
+  ],
+
+  "telegram_bot_token": "",
+  "telegram_chat_id": "",
+  "notion_token": "",
+  "notion_database_id": "1cb005324ce44910b3a31d7599ba7505"
+}
