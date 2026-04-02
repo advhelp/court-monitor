@@ -35,31 +35,35 @@ NOTION_HEARINGS_DB = "1cb005324ce44910b3a31d7599ba7505"
 
 # Column name candidates (CSV format may vary)
 CASE_NUMBER_COLS = [
-    "Номер справи", "номер справи", "case_number",
+    "case", "Номер справи", "номер справи", "case_number",
     "Номер_справи", "НОМЕР СПРАВИ", "№ справи",
 ]
 DATE_COLS = [
-    "Дата засідання", "дата засідання", "Дата", "дата",
+    "date", "Дата засідання", "дата засідання", "Дата", "дата",
     "hearing_date", "Дата/Час", "Дата_засідання",
 ]
 TIME_COLS = [
-    "Час засідання", "час засідання", "Час", "час",
+    "time", "Час засідання", "час засідання", "Час", "час",
     "hearing_time", "Час_засідання",
 ]
 JUDGE_COLS = [
-    "Суддя", "суддя", "judge", "Суддя-доповідач",
+    "judges", "judge", "Суддя", "суддя", "Суддя-доповідач",
     "Головуючий суддя", "Склад суду",
 ]
 COURT_COLS = [
-    "Суд", "суд", "Назва суду", "court",
-    "court_name", "Найменування суду",
+    "court_name", "Суд", "суд", "Назва суду", "court",
+    "Найменування суду",
 ]
 SUBJECT_COLS = [
-    "Предмет позову", "предмет позову", "Предмет",
-    "Опис", "subject", "Обвинувачення",
+    "case_description", "Предмет позову", "предмет позову",
+    "Предмет", "Опис", "subject", "Обвинувачення",
 ]
 HALL_COLS = [
-    "Зал", "зал", "Номер залу", "hall", "Зал судового засідання",
+    "court_room", "Зал", "зал", "Номер залу", "hall",
+    "Зал судового засідання",
+]
+INVOLVED_COLS = [
+    "case_involved", "Сторони", "сторони", "parties",
 ]
 FORM_COLS = [
     "Форма судочинства", "форма судочинства",
@@ -161,9 +165,10 @@ def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
     else:
         header_text = raw_header.decode("utf-8", errors="replace")
 
-    delim = ";" if ";" in header_text else ","
+    delim = "\t" if "\t" in header_text else (";" if ";" in header_text else ",")
+    log.info(f"Detected delimiter: {'TAB' if delim == chr(9) else delim}")
     headers = [
-        h.strip().strip("\ufeff")
+        h.strip().strip("\ufeff").strip('"').strip("'")
         for h in next(csv.reader(StringIO(header_text), delimiter=delim))
     ]
     log.info(f"Columns ({len(headers)}): {headers[:8]}...")
@@ -203,7 +208,7 @@ def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
             continue
         try:
             vals = next(csv.reader(StringIO(line), delimiter=delim))
-            row = dict(zip(headers, vals))
+            row = dict(zip(headers, [v.strip().strip('"') for v in vals]))
         except Exception:
             continue
         if row.get(cm["case"], "").strip() in case_set:
@@ -250,14 +255,24 @@ def format_tg_message(row: dict, cm: dict) -> str:
 
 # ─── Notion ──────────────────────────────────────────────────────
 
-def parse_date(date_str: str) -> str | None:
-    """Parse date string to ISO format."""
-    for fmt in ["%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"]:
+def parse_date(date_str: str) -> tuple[str | None, str | None]:
+    """Parse date string to ISO format. Returns (date, time)."""
+    date_str = date_str.strip()
+    # Try datetime formats first (date + time in one field)
+    for fmt in ["%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M", "%Y-%m-%d %H:%M:%S",
+                "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M"]:
         try:
-            return datetime.strptime(date_str.strip(), fmt).strftime("%Y-%m-%d")
+            dt = datetime.strptime(date_str, fmt)
+            return dt.strftime("%Y-%m-%d"), dt.strftime("%H:%M")
         except ValueError:
             continue
-    return None
+    # Date only
+    for fmt in ["%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"]:
+        try:
+            return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d"), None
+        except ValueError:
+            continue
+    return None, None
 
 
 def map_form(form_str: str) -> str | None:
@@ -316,9 +331,12 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict):
     }
 
     # Date
-    iso_date = parse_date(date_str) if date_str else None
+    iso_date, parsed_time = parse_date(date_str) if date_str else (None, None)
     if iso_date:
         props["Дата засідання"] = {"date": {"start": iso_date}}
+    # Use parsed time from date field if no separate time column
+    if parsed_time and not time_str:
+        time_str = parsed_time
 
     # Text fields
     for prop, val in [
