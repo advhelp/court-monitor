@@ -257,9 +257,13 @@ def send_telegram(token: str, chat_id: str, msg: str):
         log.error(f"Telegram failed: {e}")
 
 
-def format_tg_message(row: dict, cm: dict) -> str:
+def format_tg_message(row: dict, cm: dict, case_name: str | None = None) -> str:
     g = lambda k: row.get(cm[k], "").strip() if cm[k] else "—"
-    msg = f"⚖️ <b>Нове засідання</b>\n📋 Справа: <code>{g('case')}</code>\n📅 Дата: <b>{g('date')}</b>"
+    case_display = case_name if case_name else g('case')
+    msg = f"⚖️ <b>Нове засідання</b>\n📋 <b>{case_display}</b>"
+    if case_name:
+        msg += f"\n📁 Справа: <code>{g('case')}</code>"
+    msg += f"\n📅 Дата: <b>{g('date')}</b>"
     if cm["time"] and g("time"):
         msg += f" о <b>{g('time')}</b>"
     msg += f"\n🏛 Суд: {g('court')}\n👨‍⚖️ Суддя: {g('judge')}"
@@ -272,9 +276,9 @@ def format_tg_message(row: dict, cm: dict) -> str:
 
 # ─── Notion ──────────────────────────────────────────────────────
 
-def fetch_cases_from_notion(token: str) -> dict[str, str]:
+def fetch_cases_from_notion(token: str) -> dict[str, dict]:
     """
-    Query Кейси АБ database and return dict: {case_number: page_id}.
+    Query Кейси АБ database and return dict: {case_number: {"page_id": ..., "name": ...}}.
     Only cases with non-empty 'Номер справи' field are included.
     """
     if not token:
@@ -308,13 +312,28 @@ def fetch_cases_from_notion(token: str) -> dict[str, str]:
         for page in data.get("results", []):
             page_id = page["id"]
             props = page.get("properties", {})
+
+            # Extract case number
             case_prop = props.get("Номер справи", {})
             rich_text = case_prop.get("rich_text", [])
             if not rich_text:
                 continue
             case_num = "".join(rt.get("plain_text", "") for rt in rich_text).strip()
-            if case_num:
-                cases[case_num] = page_id
+            if not case_num:
+                continue
+
+            # Extract case name from title property "справа"
+            case_name = ""
+            for prop_name, prop_data in props.items():
+                if prop_data.get("type") == "title":
+                    title_arr = prop_data.get("title", [])
+                    case_name = "".join(t.get("plain_text", "") for t in title_arr).strip()
+                    break
+
+            cases[case_num] = {
+                "page_id": page_id,
+                "name": case_name or case_num,
+            }
 
         has_more = data.get("has_more", False)
         start_cursor = data.get("next_cursor")
@@ -360,7 +379,7 @@ def map_form(form_str: str) -> str | None:
     return None
 
 
-def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page_id: str | None = None):
+def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page_id: str | None = None, case_name: str | None = None):
     """Create a page in ⚖️ Засідання database, linked to Кейси АБ via relation."""
     if not token or not db_id:
         log.warning("Notion not configured")
@@ -377,8 +396,9 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page
     subject = g("subject")
     form = g("form")
 
-    # Build title
-    title = f"Засідання {case_num}"
+    # Build title — use case name if available, fallback to case number
+    display_name = case_name if case_name else f"Засідання {case_num}"
+    title = display_name
     if date_str:
         title += f" — {date_str}"
 
@@ -484,6 +504,34 @@ def ics_fold_line(line: str) -> str:
     return "\r\n".join(result)
 
 
+def fetch_case_title(token: str, page_id: str) -> str:
+    """Fetch a single case page and extract its title."""
+    if not token or not page_id:
+        return ""
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Notion-Version": "2022-06-28",
+    }
+    try:
+        r = requests.get(
+            f"https://api.notion.com/v1/pages/{page_id}",
+            headers=headers,
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return ""
+        data = r.json()
+        props = data.get("properties", {})
+        # Find the title property (type=title)
+        for prop_name, prop_data in props.items():
+            if prop_data.get("type") == "title":
+                title_arr = prop_data.get("title", [])
+                return "".join(t.get("plain_text", "") for t in title_arr).strip()
+    except requests.RequestException:
+        pass
+    return ""
+
+
 def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
     """Query ⚖️ Засідання database for all future hearings."""
     if not token or not db_id:
@@ -543,10 +591,22 @@ def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
                 d = p.get("date")
                 return d.get("start", "") if d else ""
 
+            def get_relation(prop_name: str) -> list[str]:
+                p = props.get(prop_name, {})
+                rel = p.get("relation", [])
+                return [r["id"] for r in rel if "id" in r]
+
+            # Resolve case title from relation
+            case_ids = get_relation("Кейс")
+            case_title = ""
+            if case_ids:
+                case_title = fetch_case_title(token, case_ids[0])
+
             hearings.append({
                 "id": page["id"],
                 "title": get_text("Подія"),
                 "case": get_text("Номер справи"),
+                "case_title": case_title,
                 "date": get_date("Дата засідання"),
                 "time": get_text("Час"),
                 "court": get_text("Суд"),
@@ -612,12 +672,22 @@ def generate_ics_feed(token: str, db_id: str) -> bool:
         # Build UID stable across runs
         uid = f"hearing-{h['id']}@court-monitor.advhelp"
 
-        # Build SUMMARY
+        # Build SUMMARY from Notion title (which contains case name + date)
+        # Extract just the name part (before " — ") for cleaner display
         case_short = h["case"] or "—"
-        summary = f"⚖️ Засідання {case_short}"
+        notion_title = h.get("title", "").strip()
+        if notion_title and " — " in notion_title:
+            case_name_part = notion_title.split(" — ")[0]
+            summary = f"⚖️ {case_name_part}"
+        elif notion_title:
+            summary = f"⚖️ {notion_title}"
+        else:
+            summary = f"⚖️ Засідання {case_short}"
 
         # Build DESCRIPTION
         desc_parts = []
+        if h["case"]:
+            desc_parts.append(f"Справа: {h['case']}")
         if h["judge"]:
             desc_parts.append(f"Суддя: {h['judge']}")
         if h["hall"]:
@@ -687,6 +757,41 @@ def generate_ics_feed(token: str, db_id: str) -> bool:
     return True
 
 
+def notify_calendar_url_once(config: dict, state: dict) -> bool:
+    """Send Telegram message with calendar URL — only once per repo."""
+    if state.get("calendar_url_sent"):
+        return False
+
+    repo = os.environ.get("GITHUB_REPOSITORY", "")
+    if "/" not in repo:
+        log.info("GITHUB_REPOSITORY not set, skipping calendar URL notification")
+        return False
+
+    owner, repo_name = repo.split("/", 1)
+    calendar_url = f"https://{owner}.github.io/{repo_name}/hearings.ics"
+
+    msg = (
+        "🎉 <b>Календар засідань готовий!</b>\n\n"
+        "Підпишись на нього у своєму календарі — і всі засідання автоматично там з'являться:\n\n"
+        f"<code>{calendar_url}</code>\n\n"
+        "📱 <b>iPhone:</b> відкрий це посилання в Safari → "
+        "Підписатись на календар\n\n"
+        "🌐 <b>Google Calendar:</b> calendar.google.com → "
+        "ліворуч «+» → «З URL» → встав посилання\n\n"
+        "💡 Засідання оновлюються 2 рази на день автоматично."
+    )
+
+    send_telegram(
+        config.get("telegram_bot_token", ""),
+        config.get("telegram_chat_id", ""),
+        msg,
+    )
+
+    state["calendar_url_sent"] = True
+    log.info(f"Calendar URL sent to Telegram: {calendar_url}")
+    return True
+
+
 # ─── Main ────────────────────────────────────────────────────────
 
 def main():
@@ -705,7 +810,7 @@ def main():
     if not cases_map:
         log.warning("No cases from Notion, falling back to config.json")
         fallback_cases = config.get("case_numbers", [])
-        cases_map = {cn: None for cn in fallback_cases}
+        cases_map = {cn: {"page_id": None, "name": None} for cn in fallback_cases}
 
     if not cases_map:
         log.error("No case numbers available (neither Notion nor config)!")
@@ -724,7 +829,14 @@ def main():
         sys.exit(1)
 
     if not rows:
-        log.info("No hearings found")
+        log.info("No hearings found in CSV")
+        # Still regenerate ICS in case Notion has manually added hearings
+        log.info("Generating ICS calendar feed...")
+        generate_ics_feed(
+            notion_token,
+            config.get("notion_database_id", NOTION_HEARINGS_DB),
+        )
+        notify_calendar_url_once(config, state)
         save_state(state)
         return
 
@@ -750,13 +862,14 @@ def main():
 
     if not rows:
         log.info("No future hearings found")
-        save_state(state)
         # Still regenerate ICS in case Notion has manually added hearings
         log.info("Generating ICS calendar feed...")
         generate_ics_feed(
             notion_token,
             config.get("notion_database_id", NOTION_HEARINGS_DB),
         )
+        notify_calendar_url_once(config, state)
+        save_state(state)
         return
 
     # Find new hearings
@@ -778,13 +891,15 @@ def main():
     if new_items:
         for row in new_items:
             case_num = row.get(cm["case"], "").strip()
-            case_page_id = cases_map.get(case_num)
+            case_info = cases_map.get(case_num) or {}
+            case_page_id = case_info.get("page_id")
+            case_name = case_info.get("name")
 
             # Telegram notification
             send_telegram(
                 config.get("telegram_bot_token", ""),
                 config.get("telegram_chat_id", ""),
-                format_tg_message(row, cm),
+                format_tg_message(row, cm, case_name=case_name),
             )
             # Notion: create hearing page with relation to case
             create_notion_hearing(
@@ -793,6 +908,7 @@ def main():
                 row,
                 cm,
                 case_page_id=case_page_id,
+                case_name=case_name,
             )
 
     # Clean old entries (90 days)
@@ -801,7 +917,6 @@ def main():
         k: v for k, v in known.items()
         if v.get("seen", "9999") > cutoff
     }
-    save_state(state)
 
     # Generate ICS calendar feed for all future hearings in Notion
     log.info("Generating ICS calendar feed...")
@@ -809,6 +924,10 @@ def main():
         notion_token,
         config.get("notion_database_id", NOTION_HEARINGS_DB),
     )
+
+    # Notify about calendar URL (only once)
+    notify_calendar_url_once(config, state)
+    save_state(state)
 
     log.info("Done!")
 
