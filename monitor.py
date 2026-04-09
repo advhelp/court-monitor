@@ -197,8 +197,12 @@ def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
         return [], {}
     log.info(f"Mapping: {cm}")
 
+    # Today (for filtering past hearings)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
     # Stream & filter
     matches = []
+    skipped_past = 0
     total = 0
     for raw in lines:
         total += 1
@@ -215,10 +219,19 @@ def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
             row = dict(zip(headers, [v.strip().strip('"') for v in vals]))
         except Exception:
             continue
-        if row.get(cm["case"], "").strip() in case_set:
-            matches.append(row)
+        if row.get(cm["case"], "").strip() not in case_set:
+            continue
 
-    log.info(f"Done: {total:,} rows, {len(matches)} matches")
+        # Filter: skip hearings in the past
+        date_val = row.get(cm["date"], "").strip() if cm["date"] else ""
+        iso_date, _ = parse_date(date_val) if date_val else (None, None)
+        if iso_date and iso_date < today_str:
+            skipped_past += 1
+            continue
+
+        matches.append(row)
+
+    log.info(f"Done: {total:,} rows, {len(matches)} matches, {skipped_past} past skipped")
     return matches, cm
 
 
@@ -475,6 +488,31 @@ def main():
 
     if not rows:
         log.info("No hearings found")
+        save_state(state)
+        return
+
+    # Filter out past hearings - keep only today and future
+    today = datetime.now().date()
+    future_rows = []
+    skipped_past = 0
+    for row in rows:
+        date_str = row.get(cm["date"], "") if cm["date"] else ""
+        iso_date, _ = parse_date(date_str) if date_str else (None, None)
+        if iso_date:
+            try:
+                row_date = datetime.strptime(iso_date, "%Y-%m-%d").date()
+                if row_date < today:
+                    skipped_past += 1
+                    continue
+            except ValueError:
+                pass
+        future_rows.append(row)
+
+    log.info(f"Filtered: {len(rows)} total, {skipped_past} past skipped, {len(future_rows)} future kept")
+    rows = future_rows
+
+    if not rows:
+        log.info("No future hearings found")
         save_state(state)
         return
 
