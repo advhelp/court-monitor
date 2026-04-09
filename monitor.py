@@ -450,6 +450,243 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page
         log.error(f"Notion failed: {e}")
 
 
+# ─── ICS Calendar Feed ────────────────────────────────────────────
+
+def ics_escape(text: str) -> str:
+    """Escape special characters in iCalendar text fields."""
+    if not text:
+        return ""
+    # Order matters: backslash first
+    text = text.replace("\\", "\\\\")
+    text = text.replace(";", "\\;")
+    text = text.replace(",", "\\,")
+    text = text.replace("\n", "\\n")
+    text = text.replace("\r", "")
+    return text
+
+
+def ics_fold_line(line: str) -> str:
+    """Fold long lines per RFC 5545 (max 75 octets per line)."""
+    if len(line.encode("utf-8")) <= 75:
+        return line
+    # Split into 73-char chunks (leaving room for CRLF + space)
+    result = []
+    current = ""
+    for char in line:
+        test = current + char
+        if len(test.encode("utf-8")) > 73:
+            result.append(current)
+            current = " " + char  # Continuation lines start with space
+        else:
+            current = test
+    if current:
+        result.append(current)
+    return "\r\n".join(result)
+
+
+def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
+    """Query ⚖️ Засідання database for all future hearings."""
+    if not token or not db_id:
+        return []
+
+    today_iso = datetime.now().strftime("%Y-%m-%d")
+    hearings = []
+    has_more = True
+    start_cursor = None
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+    while has_more:
+        payload = {
+            "page_size": 100,
+            "filter": {
+                "property": "Дата засідання",
+                "date": {"on_or_after": today_iso},
+            },
+            "sorts": [{"property": "Дата засідання", "direction": "ascending"}],
+        }
+        if start_cursor:
+            payload["start_cursor"] = start_cursor
+
+        try:
+            r = requests.post(
+                f"https://api.notion.com/v1/databases/{db_id}/query",
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except requests.RequestException as e:
+            log.error(f"Failed to fetch hearings: {e}")
+            return hearings
+
+        for page in data.get("results", []):
+            props = page.get("properties", {})
+
+            def get_text(prop_name: str) -> str:
+                p = props.get(prop_name, {})
+                rt = p.get("rich_text") or p.get("title") or []
+                return "".join(t.get("plain_text", "") for t in rt).strip()
+
+            def get_select(prop_name: str) -> str:
+                p = props.get(prop_name, {})
+                sel = p.get("select")
+                return sel.get("name", "") if sel else ""
+
+            def get_date(prop_name: str) -> str:
+                p = props.get(prop_name, {})
+                d = p.get("date")
+                return d.get("start", "") if d else ""
+
+            hearings.append({
+                "id": page["id"],
+                "title": get_text("Подія"),
+                "case": get_text("Номер справи"),
+                "date": get_date("Дата засідання"),
+                "time": get_text("Час"),
+                "court": get_text("Суд"),
+                "judge": get_text("Суддя"),
+                "hall": get_text("Зал"),
+                "subject": get_text("Предмет"),
+                "status": get_select("Статус"),
+                "url": page.get("url", ""),
+            })
+
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
+
+    log.info(f"Fetched {len(hearings)} future hearings from Notion")
+    return hearings
+
+
+def generate_ics_feed(token: str, db_id: str) -> bool:
+    """Generate docs/hearings.ics file with all future hearings."""
+    hearings = fetch_future_hearings_from_notion(token, db_id)
+    if not hearings:
+        log.info("No hearings to export to ICS")
+        # Still create empty calendar so file exists
+        hearings = []
+
+    now_utc = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Court Monitor//AdvHelp//UA",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "X-WR-CALNAME:Судові засідання",
+        "X-WR-CALDESC:Автоматичний моніторинг засідань ДСА",
+        "X-WR-TIMEZONE:Europe/Kiev",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+        "X-PUBLISHED-TTL:PT1H",
+    ]
+
+    for h in hearings:
+        if not h["date"]:
+            continue
+
+        # Parse date
+        try:
+            date_obj = datetime.strptime(h["date"], "%Y-%m-%d")
+        except ValueError:
+            continue
+
+        # Parse time if present
+        start_dt = None
+        end_dt = None
+        if h["time"]:
+            try:
+                # Try HH:MM
+                hour, minute = h["time"].split(":")[:2]
+                start_dt = date_obj.replace(hour=int(hour), minute=int(minute))
+                end_dt = start_dt + timedelta(hours=1)
+            except (ValueError, IndexError):
+                pass
+
+        # Build UID stable across runs
+        uid = f"hearing-{h['id']}@court-monitor.advhelp"
+
+        # Build SUMMARY
+        case_short = h["case"] or "—"
+        summary = f"⚖️ Засідання {case_short}"
+
+        # Build DESCRIPTION
+        desc_parts = []
+        if h["judge"]:
+            desc_parts.append(f"Суддя: {h['judge']}")
+        if h["hall"]:
+            desc_parts.append(f"Зал: {h['hall']}")
+        if h["subject"]:
+            desc_parts.append(f"Предмет: {h['subject']}")
+        if h["url"]:
+            desc_parts.append(f"Notion: {h['url']}")
+        description = "\\n".join(ics_escape(p) for p in desc_parts)
+
+        # Location = court name
+        location = ics_escape(h["court"]) if h["court"] else ""
+
+        lines.append("BEGIN:VEVENT")
+        lines.append(f"UID:{uid}")
+        lines.append(f"DTSTAMP:{now_utc}")
+
+        if start_dt and end_dt:
+            # Floating time (no timezone) — calendar app uses local
+            lines.append(f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%S')}")
+            lines.append(f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%S')}")
+        else:
+            # All-day event
+            lines.append(f"DTSTART;VALUE=DATE:{date_obj.strftime('%Y%m%d')}")
+            next_day = date_obj + timedelta(days=1)
+            lines.append(f"DTEND;VALUE=DATE:{next_day.strftime('%Y%m%d')}")
+
+        lines.append(ics_fold_line(f"SUMMARY:{ics_escape(summary)}"))
+        if location:
+            lines.append(ics_fold_line(f"LOCATION:{location}"))
+        if description:
+            lines.append(ics_fold_line(f"DESCRIPTION:{description}"))
+
+        lines.append("STATUS:CONFIRMED")
+        lines.append("TRANSP:OPAQUE")
+
+        # Reminder 1 day before
+        lines.append("BEGIN:VALARM")
+        lines.append("ACTION:DISPLAY")
+        lines.append("DESCRIPTION:Завтра судове засідання")
+        lines.append("TRIGGER:-P1D")
+        lines.append("END:VALARM")
+
+        # Reminder 1 hour before
+        lines.append("BEGIN:VALARM")
+        lines.append("ACTION:DISPLAY")
+        lines.append("DESCRIPTION:Засідання за годину")
+        lines.append("TRIGGER:-PT1H")
+        lines.append("END:VALARM")
+
+        lines.append("END:VEVENT")
+
+    lines.append("END:VCALENDAR")
+
+    # Write to docs/hearings.ics
+    docs_dir = Path(__file__).parent / "docs"
+    docs_dir.mkdir(exist_ok=True)
+    ics_path = docs_dir / "hearings.ics"
+
+    # Use CRLF as required by RFC 5545
+    content = "\r\n".join(lines) + "\r\n"
+
+    with open(ics_path, "w", encoding="utf-8", newline="") as f:
+        f.write(content)
+
+    log.info(f"ICS feed written: {ics_path} ({len(hearings)} events)")
+    return True
+
+
 # ─── Main ────────────────────────────────────────────────────────
 
 def main():
@@ -514,6 +751,12 @@ def main():
     if not rows:
         log.info("No future hearings found")
         save_state(state)
+        # Still regenerate ICS in case Notion has manually added hearings
+        log.info("Generating ICS calendar feed...")
+        generate_ics_feed(
+            notion_token,
+            config.get("notion_database_id", NOTION_HEARINGS_DB),
+        )
         return
 
     # Find new hearings
@@ -559,6 +802,14 @@ def main():
         if v.get("seen", "9999") > cutoff
     }
     save_state(state)
+
+    # Generate ICS calendar feed for all future hearings in Notion
+    log.info("Generating ICS calendar feed...")
+    generate_ics_feed(
+        notion_token,
+        config.get("notion_database_id", NOTION_HEARINGS_DB),
+    )
+
     log.info("Done!")
 
 
