@@ -276,11 +276,19 @@ def format_tg_message(row: dict, cm: dict, case_name: str | None = None) -> str:
 
 # ─── Notion ──────────────────────────────────────────────────────
 
+# Global cache: page_id -> case title (populated by fetch_cases_from_notion)
+_case_title_cache: dict[str, str] = {}
+
+
 def fetch_cases_from_notion(token: str) -> dict[str, dict]:
     """
     Query Кейси АБ database and return dict: {case_number: {"page_id": ..., "name": ...}}.
+    Also populates _case_title_cache as a side effect for fast title lookups.
     Only cases with non-empty 'Номер справи' field are included.
     """
+    global _case_title_cache
+    _case_title_cache.clear()
+
     if not token:
         log.warning("Notion token not configured, no cases fetched")
         return {}
@@ -335,10 +343,14 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
                 "name": case_name or case_num,
             }
 
+            # Populate global cache (used by ICS feed generator)
+            if case_name:
+                _case_title_cache[page_id] = case_name
+
         has_more = data.get("has_more", False)
         start_cursor = data.get("next_cursor")
 
-    log.info(f"Fetched {len(cases)} cases from Кейси АБ")
+    log.info(f"Fetched {len(cases)} cases from Кейси АБ ({len(_case_title_cache)} with names)")
     return cases
 
 
@@ -596,11 +608,14 @@ def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
                 rel = p.get("relation", [])
                 return [r["id"] for r in rel if "id" in r]
 
-            # Resolve case title from relation
+            # Resolve case title from cache (populated by fetch_cases_from_notion)
             case_ids = get_relation("Кейс")
             case_title = ""
             if case_ids:
-                case_title = fetch_case_title(token, case_ids[0])
+                case_title = _case_title_cache.get(case_ids[0], "")
+                # Fallback to API call if not in cache (e.g., manual hearing without case relation)
+                if not case_title:
+                    case_title = fetch_case_title(token, case_ids[0])
 
             hearings.append({
                 "id": page["id"],
@@ -796,7 +811,7 @@ def notify_calendar_url_once(config: dict, state: dict) -> bool:
 
 def main():
     log.info("=" * 50)
-    log.info("Court Hearing Monitor v3 (Notion-driven)")
+    log.info("Court Hearing Monitor v7 (cached titles)")
     log.info("=" * 50)
 
     config = load_config()
