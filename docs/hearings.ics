@@ -10,10 +10,10 @@ REFRESH-INTERVAL;VALUE=DURATION:PT1H
 X-PUBLISHED-TTL:PT1H
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-818b-94a5-d3dfd813e303@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260409T150000
 DTEND:20260409T160000
-SUMMARY:⚖️ Засідання 932/11516/24
+SUMMARY:⚖️ Лях ст. 113 — 932/11516/24
 LOCATION:Новомосковський міськрайонний суд
   Дніпропетровської області
 DESCRIPTION:Справа: 932/11516/24\nСуддя: Головуючий 
@@ -38,10 +38,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-81d8-8f5e-e2a4d31f9ace@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260413T143000
 DTEND:20260413T153000
-SUMMARY:⚖️ Засідання 202/10407/22
+SUMMARY:⚖️ Бондаренко ст. 111-1 — 202/10407/22
 DESCRIPTION:Справа: 202/10407/22\nСуддя: Головуючий 
  суддя: Волошин Є.В.\, суддя-доповідач: Во
  лошин Є.В.\, суддя-учасник колегії: Мачус
@@ -63,10 +63,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-811a-8a9f-fc5326f6443c@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260416T115000
 DTEND:20260416T125000
-SUMMARY:⚖️ Засідання 183/9077/21
+SUMMARY:⚖️ Синенко ст. 345 — 183/9077/21
 LOCATION:Магдалинівський районний суд Дніп
  ропетровської області
 DESCRIPTION:Справа: 183/9077/21\nСуддя: Головуючий 
@@ -90,10 +90,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-813f-b132-f70a5c53d883@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260416T093000
 DTEND:20260416T103000
-SUMMARY:⚖️ Засідання 199/2348/23
+SUMMARY:⚖️ Берестов ст. 286 — 199/2348/23
 LOCATION:Амур-Нижньодніпровський районний 
  суд м.Дніпропетровська
 DESCRIPTION:Справа: 199/2348/23\nСуддя: Головуючий 
@@ -118,10 +118,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-81f1-b4d8-f3707d9abb90@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260420T130000
 DTEND:20260420T140000
-SUMMARY:⚖️ Засідання 933/509/26
+SUMMARY:⚖️ Михайленко ст. 130 — 933/509/26
 LOCATION:Олександрівський районний суд Дон
  ецької області
 DESCRIPTION:Справа: 933/509/26\nСуддя: Головуючий с
@@ -145,10 +145,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-8134-84d2-ec64bf5708dc@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260421T130000
 DTEND:20260421T140000
-SUMMARY:⚖️ Засідання 188/488/22
+SUMMARY:⚖️ Арестова ст. 190 — 188/488/22
 LOCATION:Петропавлівський районний суд Дні
  пропетровської області
 DESCRIPTION:Справа: 188/488/22\nСуддя: Головуючий с
@@ -171,10 +171,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-813b-b63e-e99b4dbe6944@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260428T093000
 DTEND:20260428T103000
-SUMMARY:⚖️ Засідання 179/1344/21
+SUMMARY:⚖️ Синенко ст. 263 — 179/1344/21
 LOCATION:Новомосковський міськрайонний суд
   Дніпропетровської області
 DESCRIPTION:Справа: 179/1344/21\nСуддя: Головуючий 
@@ -198,10 +198,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-8104-8a89-eb2695b34394@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260430T090000
 DTEND:20260430T100000
-SUMMARY:⚖️ Засідання 200/19861/17
+SUMMARY:⚖️ Аліфанов ч. 2 ст. 286 — 200/19861/17
 LOCATION:Бабушкінський районний суд м.Дніпр
  опетровська
 DESCRIPTION:Справа: 200/19861/17\nСуддя: Головуючий 
@@ -227,10 +227,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-81cf-8cc0-d397562f60ba@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260521T110000
 DTEND:20260521T120000
-SUMMARY:⚖️ Засідання 171/145/23
+SUMMARY:⚖️ Кудлюк — 171/145/23
 LOCATION:Довгинцівський районний суд м.Крив
  ого Рогу
 DESCRIPTION:Справа: 171/145/23\nСуддя: Головуючий с
@@ -255,10 +255,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-8100-8ecf-ff1018491d5c@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260528T104000
 DTEND:20260528T114000
-SUMMARY:⚖️ Засідання 171/145/23
+SUMMARY:⚖️ Кудлюк — 171/145/23
 LOCATION:Довгинцівський районний суд м.Крив
  ого Рогу
 DESCRIPTION:Справа: 171/145/23\nСуддя: Головуючий с
@@ -283,10 +283,10 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-814d-bd9e-f8afaf0f2885@court-monitor.advhelp
-DTSTAMP:20260409T215329Z
+DTSTAMP:20260409T220000Z
 DTSTART:20260603T000000
 DTEND:20260603T010000
-SUMMARY:⚖️ Засідання 160/35450/25
+SUMMARY:⚖️ Берестов мобілізація — 160/35450/25
 LOCATION:Третій апеляційний адміністративн
  ий суд
 DESCRIPTION:Справа: 160/35450/25\nСуддя: Головуючий 
