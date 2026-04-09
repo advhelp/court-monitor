@@ -1,0 +1,306 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Court Monitor//AdvHelp//UA
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:Судові засідання
+X-WR-CALDESC:Автоматичний моніторинг засідань ДСА
+X-WR-TIMEZONE:Europe/Kiev
+REFRESH-INTERVAL;VALUE=DURATION:PT1H
+X-PUBLISHED-TTL:PT1H
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-818b-94a5-d3dfd813e303@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260409T150000
+DTEND:20260409T160000
+SUMMARY:⚖️ Засідання 932/11516/24
+LOCATION:Новомосковський міськрайонний суд
+  Дніпропетровської області
+DESCRIPTION:Суддя: Головуючий суддя: Ігнатьєв
+  Д.П.\, суддя-доповідач: Ігнатьєв Д.П.\, су
+ ддя-учасник колегії: Краснокутський С.О
+ .\, суддя-учасник колегії: Гузоватий О.І.\
+ nПредмет: Диверсія\nNotion: https://www.notion.so/932-115
+ 16-24-09-04-2026-15-00-33d89a7a6cc8818b94a5d3dfd813e303
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-81d8-8f5e-e2a4d31f9ace@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260413T143000
+DTEND:20260413T153000
+SUMMARY:⚖️ Засідання 202/10407/22
+DESCRIPTION:Суддя: Головуючий суддя: Волошин 
+ Є.В.\, суддя-доповідач: Волошин Є.В.\, судд
+ я-учасник колегії: Мачуський О.М.\, суддя
+ -учасник колегії: Бєльченко Л.А.\nNotion: https
+ ://www.notion.so/202-10407-22-13-04-2026-14-30-33d89a7a6cc881d88f5ee2a4d
+ 31f9ace
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-811a-8a9f-fc5326f6443c@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260416T115000
+DTEND:20260416T125000
+SUMMARY:⚖️ Засідання 183/9077/21
+LOCATION:Магдалинівський районний суд Дніп
+ ропетровської області
+DESCRIPTION:Суддя: Головуючий суддя: Ковальчу
+ к Т.А.\, суддя-доповідач: Ковальчук Т.А.\nП
+ редмет: Погроза або насильство щодо пра
+ цівника правоохоронного органу\nNotion: http
+ s://www.notion.so/183-9077-21-16-04-2026-11-50-33d89a7a6cc8811a8a9ffc532
+ 6f6443c
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-813f-b132-f70a5c53d883@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260416T093000
+DTEND:20260416T103000
+SUMMARY:⚖️ Засідання 199/2348/23
+LOCATION:Амур-Нижньодніпровський районний 
+ суд м.Дніпропетровська
+DESCRIPTION:Суддя: Головуючий суддя: ДЯЧЕНКО 
+ І.В.\, суддя-доповідач: ДЯЧЕНКО І.В.\nЗал: 
+ №3\nПредмет: Порушення правил безпеки д
+ орожнього руху або експлуатації трансп
+ орту особами\, які керують транспортним
+ и засобами\nNotion: https://www.notion.so/199-2348-23-16-04-202
+ 6-09-30-33d89a7a6cc8813fb132f70a5c53d883
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-81f1-b4d8-f3707d9abb90@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260420T130000
+DTEND:20260420T140000
+SUMMARY:⚖️ Засідання 933/509/26
+LOCATION:Олександрівський районний суд Дон
+ ецької області
+DESCRIPTION:Суддя: Головуючий суддя: Попович 
+ І.А.\, суддя-доповідач: Попович І.А.\nЗал: 2
+ \nПредмет: відмова від проходження огля
+ ду на стан сп'яніння\nNotion: https://www.notion.so/933-
+ 509-26-20-04-2026-13-00-33d89a7a6cc881f1b4d8f3707d9abb90
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-8134-84d2-ec64bf5708dc@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260421T130000
+DTEND:20260421T140000
+SUMMARY:⚖️ Засідання 188/488/22
+LOCATION:Петропавлівський районний суд Дні
+ пропетровської області
+DESCRIPTION:Суддя: Головуючий суддя: Місюра К.
+ В.\, суддя-доповідач: Місюра К.В.\nПредмет
+ : ст. 190 ч 1 КК україни\nNotion: https://www.notion.so/188-
+ 488-22-21-04-2026-13-00-33d89a7a6cc8813484d2ec64bf5708dc
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-813b-b63e-e99b4dbe6944@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260428T093000
+DTEND:20260428T103000
+SUMMARY:⚖️ Засідання 179/1344/21
+LOCATION:Новомосковський міськрайонний суд
+  Дніпропетровської області
+DESCRIPTION:Суддя: Головуючий суддя: Ігольнік
+ ова М.О.\, суддя-доповідач: Ігольнікова М
+ .О.\nПредмет: Незаконне поводження зі зб
+ роєю\, бойовими припасами або вибуховим
+ и речовинами\nNotion: https://www.notion.so/179-1344-21-28-04
+ -2026-09-30-33d89a7a6cc8813bb63ee99b4dbe6944
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-8104-8a89-eb2695b34394@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260430T090000
+DTEND:20260430T100000
+SUMMARY:⚖️ Засідання 200/19861/17
+LOCATION:Бабушкінський районний суд м.Дніпр
+ опетровська
+DESCRIPTION:Суддя: Головуючий суддя: Марущак 
+ С.Л.\, суддя-доповідач: Марущак С.Л.\nЗал: 2
+ 04 тел.067 84 54 134\nПредмет: Порушення правил
+  безпеки дорожнього руху або експлуата
+ ції транспорту особами\, які керують тр
+ анспортними засобами\nNotion: https://www.notion.so/2
+ 00-19861-17-30-04-2026-09-00-33d89a7a6cc881048a89eb2695b34394
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-81cf-8cc0-d397562f60ba@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260521T110000
+DTEND:20260521T120000
+SUMMARY:⚖️ Засідання 171/145/23
+LOCATION:Довгинцівський районний суд м.Крив
+ ого Рогу
+DESCRIPTION:Суддя: Головуючий суддя: Сарат Н.О
+ .\, суддя-доповідач: Сарат Н.О.\nЗал: Зал №
+  33. Тел.: 0974244617\nПредмет: Прийняття пропо
+ зиції\, обіцянки або одержання неправом
+ ірної вигоди службовою особою\nNotion: https:/
+ /www.notion.so/171-145-23-21-05-2026-11-00-33d89a7a6cc881cf8cc0d397562f6
+ 0ba
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-8100-8ecf-ff1018491d5c@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260528T104000
+DTEND:20260528T114000
+SUMMARY:⚖️ Засідання 171/145/23
+LOCATION:Довгинцівський районний суд м.Крив
+ ого Рогу
+DESCRIPTION:Суддя: Головуючий суддя: Сарат Н.О
+ .\, суддя-доповідач: Сарат Н.О.\nЗал: Зал №
+  33. Тел.: 0974244617\nПредмет: Прийняття пропо
+ зиції\, обіцянки або одержання неправом
+ ірної вигоди службовою особою\nNotion: https:/
+ /www.notion.so/171-145-23-28-05-2026-10-40-33d89a7a6cc881008ecfff1018491
+ d5c
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33d89a7a-6cc8-814d-bd9e-f8afaf0f2885@court-monitor.advhelp
+DTSTAMP:20260409T193759Z
+DTSTART:20260603T000000
+DTEND:20260603T010000
+SUMMARY:⚖️ Засідання 160/35450/25
+LOCATION:Третій апеляційний адміністративн
+ ий суд
+DESCRIPTION:Суддя: Головуючий суддя: Щербак А.
+ А.\, суддя-доповідач: Щербак А.А.\, суддя-у
+ часник колегії: Баранник Н.П.\, суддя-уча
+ сник колегії:  Малиш Н.І.\nNotion: https://www.notion.
+ so/160-35450-25-03-06-2026-00-00-33d89a7a6cc8814dbd9ef8afaf0f2885
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+END:VCALENDAR
