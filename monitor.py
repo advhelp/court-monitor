@@ -33,6 +33,10 @@ STATE_FILE = Path(__file__).parent / "state.json"
 # Notion database ID for ⚖️ Засідання
 NOTION_HEARINGS_DB = "1cb005324ce44910b3a31d7599ba7505"
 
+# Кейси АБ database + data source IDs
+NOTION_CASES_DB = "272cfd318d33495494243620503615e7"
+NOTION_CASES_DS = "5a8d544a-1fef-432e-b086-06ece834653d"
+
 # Column name candidates (CSV format may vary)
 CASE_NUMBER_COLS = [
     "case", "Номер справи", "номер справи", "case_number",
@@ -255,6 +259,57 @@ def format_tg_message(row: dict, cm: dict) -> str:
 
 # ─── Notion ──────────────────────────────────────────────────────
 
+def fetch_cases_from_notion(token: str) -> dict[str, str]:
+    """
+    Query Кейси АБ database and return dict: {case_number: page_id}.
+    Only cases with non-empty 'Номер справи' field are included.
+    """
+    if not token:
+        log.warning("Notion token not configured, no cases fetched")
+        return {}
+
+    cases = {}
+    url = f"https://api.notion.com/v1/databases/{NOTION_CASES_DB}/query"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+    has_more = True
+    start_cursor = None
+
+    while has_more:
+        payload = {"page_size": 100}
+        if start_cursor:
+            payload["start_cursor"] = start_cursor
+
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=30)
+            r.raise_for_status()
+            data = r.json()
+        except requests.RequestException as e:
+            log.error(f"Failed to query Кейси АБ: {e}")
+            return cases
+
+        for page in data.get("results", []):
+            page_id = page["id"]
+            props = page.get("properties", {})
+            case_prop = props.get("Номер справи", {})
+            rich_text = case_prop.get("rich_text", [])
+            if not rich_text:
+                continue
+            case_num = "".join(rt.get("plain_text", "") for rt in rich_text).strip()
+            if case_num:
+                cases[case_num] = page_id
+
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
+
+    log.info(f"Fetched {len(cases)} cases from Кейси АБ")
+    return cases
+
+
 def parse_date(date_str: str) -> tuple[str | None, str | None]:
     """Parse date string to ISO format. Returns (date, time)."""
     date_str = date_str.strip()
@@ -292,8 +347,8 @@ def map_form(form_str: str) -> str | None:
     return None
 
 
-def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict):
-    """Create a page in ⚖️ Засідання database."""
+def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page_id: str | None = None):
+    """Create a page in ⚖️ Засідання database, linked to Кейси АБ via relation."""
     if not token or not db_id:
         log.warning("Notion not configured")
         return
@@ -329,6 +384,10 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict):
             "select": {"name": "auto: CSV ДСА"}
         },
     }
+
+    # Link to case in Кейси АБ via relation
+    if case_page_id:
+        props["Кейс"] = {"relation": [{"id": case_page_id}]}
 
     # Date
     iso_date, parsed_time = parse_date(date_str) if date_str else (None, None)
@@ -382,18 +441,28 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict):
 
 def main():
     log.info("=" * 50)
-    log.info("Court Hearing Monitor v2")
+    log.info("Court Hearing Monitor v3 (Notion-driven)")
     log.info("=" * 50)
 
     config = load_config()
     state = load_state()
-    cases = config.get("case_numbers", [])
 
-    if not cases:
-        log.error("No case numbers in config!")
+    # Fetch cases from Notion Кейси АБ (primary source)
+    notion_token = config.get("notion_token", "")
+    cases_map = fetch_cases_from_notion(notion_token)
+
+    # Fallback: use config.json if Notion returned nothing
+    if not cases_map:
+        log.warning("No cases from Notion, falling back to config.json")
+        fallback_cases = config.get("case_numbers", [])
+        cases_map = {cn: None for cn in fallback_cases}
+
+    if not cases_map:
+        log.error("No case numbers available (neither Notion nor config)!")
         sys.exit(1)
 
-    rows, cm = download_and_filter(cases)
+    case_list = list(cases_map.keys())
+    rows, cm = download_and_filter(case_list)
 
     if not cm:
         send_telegram(
@@ -427,18 +496,22 @@ def main():
 
     if new_items:
         for row in new_items:
-            # Telegram notification to you
+            case_num = row.get(cm["case"], "").strip()
+            case_page_id = cases_map.get(case_num)
+
+            # Telegram notification
             send_telegram(
                 config.get("telegram_bot_token", ""),
                 config.get("telegram_chat_id", ""),
                 format_tg_message(row, cm),
             )
-            # Notion: create hearing page
+            # Notion: create hearing page with relation to case
             create_notion_hearing(
-                config.get("notion_token", ""),
+                notion_token,
                 config.get("notion_database_id", NOTION_HEARINGS_DB),
                 row,
                 cm,
+                case_page_id=case_page_id,
             )
 
     # Clean old entries (90 days)
