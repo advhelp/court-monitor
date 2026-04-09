@@ -319,6 +319,8 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
 
         for page in data.get("results", []):
             page_id = page["id"]
+            # Normalized version (no dashes) for cache lookup
+            page_id_norm = page_id.replace("-", "")
             props = page.get("properties", {})
 
             # Extract case number
@@ -344,8 +346,9 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
             }
 
             # Populate global cache (used by ICS feed generator)
+            # Use normalized id (no dashes) as key
             if case_name:
-                _case_title_cache[page_id] = case_name
+                _case_title_cache[page_id_norm] = case_name
 
         has_more = data.get("has_more", False)
         start_cursor = data.get("next_cursor")
@@ -606,16 +609,24 @@ def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
             def get_relation(prop_name: str) -> list[str]:
                 p = props.get(prop_name, {})
                 rel = p.get("relation", [])
-                return [r["id"] for r in rel if "id" in r]
+                # Normalize: strip dashes to match cache keys
+                return [r["id"].replace("-", "") for r in rel if "id" in r]
 
             # Resolve case title from cache (populated by fetch_cases_from_notion)
             case_ids = get_relation("Кейс")
             case_title = ""
             if case_ids:
                 case_title = _case_title_cache.get(case_ids[0], "")
-                # Fallback to API call if not in cache (e.g., manual hearing without case relation)
                 if not case_title:
+                    log.warning(
+                        f"Case title NOT in cache for hearing {get_text('Номер справи')}: "
+                        f"relation_id={case_ids[0]}, cache_size={len(_case_title_cache)}, "
+                        f"cache_sample={list(_case_title_cache.keys())[:2]}"
+                    )
+                    # Fallback to API call (rarely needed)
                     case_title = fetch_case_title(token, case_ids[0])
+                else:
+                    log.info(f"Found cached title for {get_text('Номер справи')}: {case_title}")
 
             hearings.append({
                 "id": page["id"],
@@ -687,15 +698,13 @@ def generate_ics_feed(token: str, db_id: str) -> bool:
         # Build UID stable across runs
         uid = f"hearing-{h['id']}@court-monitor.advhelp"
 
-        # Build SUMMARY from Notion title (which contains case name + date)
-        # Extract just the name part (before " — ") for cleaner display
+        # Build SUMMARY: prefer case title from Кейси АБ (linked case name)
         case_short = h["case"] or "—"
-        notion_title = h.get("title", "").strip()
-        if notion_title and " — " in notion_title:
-            case_name_part = notion_title.split(" — ")[0]
-            summary = f"⚖️ {case_name_part}"
-        elif notion_title:
-            summary = f"⚖️ {notion_title}"
+        case_title = h.get("case_title", "").strip()
+        if case_title and case_short and case_short != "—":
+            summary = f"⚖️ {case_title} — {case_short}"
+        elif case_title:
+            summary = f"⚖️ {case_title}"
         else:
             summary = f"⚖️ Засідання {case_short}"
 
@@ -811,7 +820,7 @@ def notify_calendar_url_once(config: dict, state: dict) -> bool:
 
 def main():
     log.info("=" * 50)
-    log.info("Court Hearing Monitor v7 (cached titles)")
+    log.info("Court Hearing Monitor v8 (normalized IDs + debug)")
     log.info("=" * 50)
 
     config = load_config()
