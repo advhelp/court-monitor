@@ -547,6 +547,74 @@ def fetch_case_title(token: str, page_id: str) -> str:
     return ""
 
 
+def delete_past_hearings(token: str, db_id: str) -> int:
+    """Delete (archive) hearings with dates before today."""
+    if not token or not db_id:
+        return 0
+
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    deleted = 0
+    has_more = True
+    start_cursor = None
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+    # Find all past hearings
+    while has_more:
+        payload = {
+            "page_size": 100,
+            "filter": {
+                "property": "Дата засідання",
+                "date": {"before": datetime.now().strftime("%Y-%m-%d")},
+            },
+        }
+        if start_cursor:
+            payload["start_cursor"] = start_cursor
+
+        try:
+            r = requests.post(
+                f"https://api.notion.com/v1/databases/{db_id}/query",
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except requests.RequestException as e:
+            log.error(f"Failed to query past hearings: {e}")
+            return deleted
+
+        for page in data.get("results", []):
+            page_id = page["id"]
+            # Archive the page
+            try:
+                ar = requests.patch(
+                    f"https://api.notion.com/v1/pages/{page_id}",
+                    headers=headers,
+                    json={"archived": True},
+                    timeout=10,
+                )
+                if ar.status_code == 200:
+                    deleted += 1
+                else:
+                    log.warning(f"Failed to archive hearing {page_id}: {ar.status_code}")
+            except requests.RequestException as e:
+                log.error(f"Error archiving hearing {page_id}: {e}")
+
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
+
+    if deleted:
+        log.info(f"Deleted {deleted} past hearings from Notion")
+    else:
+        log.info("No past hearings to delete")
+    return deleted
+
+
 def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
     """Query ⚖️ Засідання database for all future hearings."""
     if not token or not db_id:
@@ -618,15 +686,7 @@ def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
             if case_ids:
                 case_title = _case_title_cache.get(case_ids[0], "")
                 if not case_title:
-                    log.warning(
-                        f"Case title NOT in cache for hearing {get_text('Номер справи')}: "
-                        f"relation_id={case_ids[0]}, cache_size={len(_case_title_cache)}, "
-                        f"cache_sample={list(_case_title_cache.keys())[:2]}"
-                    )
-                    # Fallback to API call (rarely needed)
                     case_title = fetch_case_title(token, case_ids[0])
-                else:
-                    log.info(f"Found cached title for {get_text('Номер справи')}: {case_title}")
 
             hearings.append({
                 "id": page["id"],
@@ -820,7 +880,7 @@ def notify_calendar_url_once(config: dict, state: dict) -> bool:
 
 def main():
     log.info("=" * 50)
-    log.info("Court Hearing Monitor v8 (normalized IDs + debug)")
+    log.info("Court Hearing Monitor v9 (auto-cleanup past)")
     log.info("=" * 50)
 
     config = load_config()
@@ -841,6 +901,11 @@ def main():
         sys.exit(1)
 
     case_list = list(cases_map.keys())
+
+    # Clean up past hearings from Notion (keeps rollup accurate)
+    hearings_db = config.get("notion_database_id", NOTION_HEARINGS_DB)
+    delete_past_hearings(notion_token, hearings_db)
+
     rows, cm = download_and_filter(case_list)
 
     if not cm:
