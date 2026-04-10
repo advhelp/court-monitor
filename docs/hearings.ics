@@ -9,36 +9,8 @@ X-WR-TIMEZONE:Europe/Kiev
 REFRESH-INTERVAL;VALUE=DURATION:PT1H
 X-PUBLISHED-TTL:PT1H
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-818b-94a5-d3dfd813e303@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
-DTSTART:20260409T150000
-DTEND:20260409T160000
-SUMMARY:⚖️ Лях ст. 113 — 932/11516/24
-LOCATION:Новомосковський міськрайонний суд
-  Дніпропетровської області
-DESCRIPTION:Справа: 932/11516/24\nСуддя: Головуючий 
- суддя: Ігнатьєв Д.П.\, суддя-доповідач: І
- гнатьєв Д.П.\, суддя-учасник колегії: Кра
- снокутський С.О.\, суддя-учасник колегії
- : Гузоватий О.І.\nПредмет: Диверсія\nNotion: h
- ttps://www.notion.so/932-11516-24-09-04-2026-15-00-33d89a7a6cc8818b94a5d
- 3dfd813e303
-STATUS:CONFIRMED
-TRANSP:OPAQUE
-BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:Завтра судове засідання
-TRIGGER:-P1D
-END:VALARM
-BEGIN:VALARM
-ACTION:DISPLAY
-DESCRIPTION:Засідання за годину
-TRIGGER:-PT1H
-END:VALARM
-END:VEVENT
-BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-81d8-8f5e-e2a4d31f9ace@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260413T143000
 DTEND:20260413T153000
 SUMMARY:⚖️ Бондаренко ст. 111-1 — 202/10407/22
@@ -63,7 +35,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-811a-8a9f-fc5326f6443c@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260416T115000
 DTEND:20260416T125000
 SUMMARY:⚖️ Синенко ст. 345 — 183/9077/21
@@ -90,7 +62,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-813f-b132-f70a5c53d883@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260416T093000
 DTEND:20260416T103000
 SUMMARY:⚖️ Берестов ст. 286 — 199/2348/23
@@ -118,7 +90,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-81f1-b4d8-f3707d9abb90@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260420T130000
 DTEND:20260420T140000
 SUMMARY:⚖️ Михайленко ст. 130 — 933/509/26
@@ -145,7 +117,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-8134-84d2-ec64bf5708dc@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260421T130000
 DTEND:20260421T140000
 SUMMARY:⚖️ Арестова ст. 190 — 188/488/22
@@ -170,8 +142,36 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
+UID:hearing-33e89a7a-6cc8-81f2-a96f-c7d690928312@court-monitor.advhelp
+DTSTAMP:20260410T095624Z
+DTSTART:20260422T124500
+DTEND:20260422T134500
+SUMMARY:⚖️ Лях ст. 113 — 932/11516/24
+LOCATION:Новомосковський міськрайонний суд
+  Дніпропетровської області
+DESCRIPTION:Справа: 932/11516/24\nСуддя: Головуючий 
+ суддя: Ігнатьєв Д.П.\, суддя-доповідач: І
+ гнатьєв Д.П.\, суддя-учасник колегії: Кра
+ снокутський С.О.\, суддя-учасник колегії
+ : Гузоватий О.І.\nПредмет: Диверсія\nNotion: h
+ ttps://www.notion.so/113-22-04-2026-12-45-33e89a7a6cc881f2a96fc7d6909283
+ 12
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-813b-b63e-e99b4dbe6944@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260428T093000
 DTEND:20260428T103000
 SUMMARY:⚖️ Синенко ст. 263 — 179/1344/21
@@ -198,7 +198,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-8104-8a89-eb2695b34394@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260430T090000
 DTEND:20260430T100000
 SUMMARY:⚖️ Аліфанов ч. 2 ст. 286 — 200/19861/17
@@ -226,8 +226,92 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
+UID:hearing-33e89a7a-6cc8-8116-b7cd-dba3e38552de@court-monitor.advhelp
+DTSTAMP:20260410T095624Z
+DTSTART:20260505T150000
+DTEND:20260505T160000
+SUMMARY:⚖️ Синенко ст. 194 — 203/273/22
+LOCATION:Кіровський районний суд м.Дніпропе
+ тровська
+DESCRIPTION:Справа: 203/273/22\nСуддя: Головуючий с
+ уддя: Черваньова Ю.М.\, суддя-доповідач: 
+ Черваньова Ю.М.\nЗал: Зал судових засіда
+ нь №5\nПредмет: Умисне знищення або пошк
+ одження майна\nNotion: https://www.notion.so/194-05-05-2026-
+ 15-00-33e89a7a6cc88116b7cddba3e38552de
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33e89a7a-6cc8-81ce-aa97-f8b4c8c74c0b@court-monitor.advhelp
+DTSTAMP:20260410T095624Z
+DTSTART:20260505T140000
+DTEND:20260505T150000
+SUMMARY:⚖️ Мазан — 206/62/26
+LOCATION:Самарський районний суд м.Дніпропе
+ тровська
+DESCRIPTION:Справа: 206/62/26\nСуддя: Головуючий с
+ уддя: Гаркуша В.В.\, суддя-доповідач: Гар
+ куша В.В.\nЗал: 301\nПредмет: Несанкціонова
+ ні дії з інформацією\, яка оброблюється 
+ в електронно-обчислювальних машинах (к
+ омп'ютерах)\, автоматизованих системах\,
+  комп'ютерних мережах або зберігається 
+ на носіях такої інформації\, вчинені ос
+ обою\, яка має право доступу до неї\nNotion: 
+ https://www.notion.so/05-05-2026-14-00-33e89a7a6cc881ceaa97f8b4c8c74c0b
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+UID:hearing-33e89a7a-6cc8-81c9-84f9-f28b2ef2bd2b@court-monitor.advhelp
+DTSTAMP:20260410T095624Z
+DTSTART:20260514T150000
+DTEND:20260514T160000
+SUMMARY:⚖️ Паронік аліменти — 205/7254/25
+LOCATION:Ленінський районний суд м.Дніпропе
+ тровська
+DESCRIPTION:Справа: 205/7254/25\nСуддя: Головуючий 
+ суддя: Дорошенко Г.В.\, суддя-доповідач: 
+ Дорошенко Г.В.\nПредмет: про стягнення а
+ ліментів\nNotion: https://www.notion.so/14-05-2026-15-00-33e89a7
+ a6cc881c984f9f28b2ef2bd2b
+STATUS:CONFIRMED
+TRANSP:OPAQUE
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Завтра судове засідання
+TRIGGER:-P1D
+END:VALARM
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:Засідання за годину
+TRIGGER:-PT1H
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-81cf-8cc0-d397562f60ba@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260521T110000
 DTEND:20260521T120000
 SUMMARY:⚖️ Кудлюк — 171/145/23
@@ -255,7 +339,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-8100-8ecf-ff1018491d5c@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260528T104000
 DTEND:20260528T114000
 SUMMARY:⚖️ Кудлюк — 171/145/23
@@ -283,7 +367,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-33d89a7a-6cc8-814d-bd9e-f8afaf0f2885@court-monitor.advhelp
-DTSTAMP:20260409T220000Z
+DTSTAMP:20260410T095624Z
 DTSTART:20260603T000000
 DTEND:20260603T010000
 SUMMARY:⚖️ Берестов мобілізація — 160/35450/25
