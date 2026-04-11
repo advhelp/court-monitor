@@ -296,7 +296,7 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
     start_cursor = None
 
     while has_more:
-       payload = {
+        payload = {
             "page_size": 100,
             "filter": {
                 "and": [
