@@ -26,7 +26,7 @@ EDRSR_URL = "https://reyestr.court.gov.ua/"
 EDRSR_REVIEW_URL = "https://reyestr.court.gov.ua/Review/"
 
 # Notion databases
-NOTION_DECISIONS_DB = "0ef26f1219dc4cbb9f8e2abd0a809460"
+NOTION_DECISIONS_DB = "cd409a96a60849f8b5d864ad6f252ad1"
 NOTION_CASES_DB = "272cfd318d33495494243620503615e7"
 
 STATE_FILE = Path(__file__).parent / "edrsr_state.json"
