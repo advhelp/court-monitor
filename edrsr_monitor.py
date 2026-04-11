@@ -32,7 +32,7 @@ NOTION_CASES_DB = "272cfd318d33495494243620503615e7"
 STATE_FILE = Path(__file__).parent / "edrsr_state.json"
 
 # Delay between requests to avoid rate limiting (seconds)
-REQUEST_DELAY = 3
+REQUEST_DELAY = 5
 
 logging.basicConfig(
     level=logging.INFO,
@@ -125,11 +125,43 @@ def parse_edrsr_html(html: str) -> list[dict]:
 
 # ─── ЄДРСР API ───────────────────────────────────────────────────
 
+def warm_session(session: requests.Session):
+    """
+    GET the main ЄДРСР page to obtain session cookies.
+    This helps avoid CAPTCHA triggers on the first POST.
+    """
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/124.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "uk-UA,uk;q=0.9,en;q=0.8",
+    }
+    try:
+        r = session.get(EDRSR_URL, headers=headers, timeout=15)
+        r.raise_for_status()
+        log.info(f"Session warmed, cookies: {list(session.cookies.keys())}")
+    except requests.RequestException as e:
+        log.warning(f"Session warm-up failed: {e}")
+
+
+# Counter for debug HTML saves (save first 2 responses for analysis)
+_debug_count = 0
+
+
 def search_edrsr(case_number: str, session: requests.Session) -> list[dict]:
     """
     Search ЄДРСР for decisions by case number.
     Returns list of decision dicts.
+    
+    Logic: parse results FIRST, then determine why there are none.
+    The CAPTCHA modal HTML is always present in the page template,
+    so we cannot use its presence as a CAPTCHA indicator.
     """
+    global _debug_count
+
     form_data = {
         "CaseNumber": case_number,
         "Sort": "1",
@@ -164,33 +196,61 @@ def search_edrsr(case_number: str, session: requests.Session) -> list[dict]:
 
     html = resp.text
 
-    # Check for CAPTCHA
-    if "captcha" in html.lower() and "зображен" in html.lower():
-        log.warning(f"CAPTCHA detected for {case_number}!")
-        return []
+    # Save first 2 responses for debugging
+    if _debug_count < 2:
+        _debug_count += 1
+        debug_path = Path(__file__).parent / f"debug_edrsr_{_debug_count}.html"
+        try:
+            with open(debug_path, "w", encoding="utf-8") as f:
+                f.write(html)
+            log.info(f"Debug HTML saved: {debug_path.name} ({len(html)} chars)")
+        except Exception:
+            pass
 
-    # Check for "no results"
+    # Step 1: Try to parse results FIRST
+    decisions = parse_edrsr_html(html)
+
+    if decisions:
+        log.info(f"  {case_number}: found {len(decisions)} decisions")
+        # Enrich with full URL and review_id
+        for d in decisions:
+            href = d.pop("_href", "")
+            if href and "/Review/" in href:
+                doc_id = href.split("/Review/")[-1].strip().rstrip("/")
+                d["review_id"] = doc_id
+                d["url"] = f"{EDRSR_REVIEW_URL}{doc_id}"
+            elif href:
+                d["review_id"] = href.strip("/").split("/")[-1]
+                d["url"] = f"{EDRSR_URL.rstrip('/')}{href}"
+            else:
+                d["review_id"] = ""
+                d["url"] = ""
+        return decisions
+
+    # Step 2: No results parsed — determine why
+
+    # Legitimate "nothing found"
     if "За заданими параметрами пошуку нічого не знайдено" in html:
         log.info(f"  {case_number}: no decisions")
         return []
 
-    decisions = parse_edrsr_html(html)
+    # Check for real CAPTCHA activation:
+    # The CAPTCHA modal is ALWAYS in the page template HTML.
+    # Real CAPTCHA block = no result rows AND no "nothing found" message
+    # AND the page shows the CAPTCHA challenge actively.
+    # Best indicator: response is very short (just the page shell without results)
+    # or contains a specific CAPTCHA activation JS call.
+    if len(html) < 5000:
+        log.warning(
+            f"CAPTCHA likely active for {case_number} "
+            f"(response too short: {len(html)} chars)"
+        )
+        return []
 
-    # Enrich with full URL and review_id
-    for d in decisions:
-        href = d.pop("_href", "")
-        if href and "/Review/" in href:
-            doc_id = href.split("/Review/")[-1].strip().rstrip("/")
-            d["review_id"] = doc_id
-            d["url"] = f"{EDRSR_REVIEW_URL}{doc_id}"
-        elif href:
-            d["review_id"] = href.strip("/").split("/")[-1]
-            d["url"] = f"{EDRSR_URL.rstrip('/')}{href}"
-        else:
-            d["review_id"] = ""
-            d["url"] = ""
-
-    return decisions
+    # Page returned but no results and no "not found" — could be
+    # empty results area or other issue
+    log.info(f"  {case_number}: no decisions found (response {len(html)} chars)")
+    return []
 
 
 def decision_uid(decision: dict) -> str:
@@ -483,7 +543,7 @@ def save_state(state: dict):
 
 def main():
     log.info("=" * 50)
-    log.info("ЄДРСР Decision Monitor v1")
+    log.info("ЄДРСР Decision Monitor v2")
     log.info("=" * 50)
 
     # Load config from environment (GitHub Secrets)
@@ -507,6 +567,8 @@ def main():
     log.info(f"Checking {len(cases_map)} cases against ЄДРСР...")
 
     session = requests.Session()
+    warm_session(session)
+    time.sleep(2)
 
     total_found = 0
     total_new = 0
