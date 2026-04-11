@@ -1,0 +1,30 @@
+name: ЄДРСР Decision Monitor
+
+on:
+  schedule:
+    - cron: '0 6,14 * * *'
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Run ЄДРСР monitor
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python edrsr_monitor.py
+      - name: Save state
+        run: |
+          git config user.name "ЄДРСР Monitor Bot"
+          git config user.email "bot@local"
+          git add edrsr_state.json 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "Update ЄДРСР state [skip ci]"
+          git push
