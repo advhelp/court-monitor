@@ -8,38 +8,43 @@ from edrsr_monitor import parse_edrsr_html, decision_uid
 SAMPLE_HTML = """
 <html>
 <body>
-<table>
+<div id="divresult">
+<table id="tableresult">
+<tbody>
+<tr><th>Nr</th></tr>
 <tr>
-  <td class="RegNumber"><a href="/Review/12345678">12345678</a></td>
-  <td class="VRType">Ухвала</td>
-  <td class="RegDate">10.04.2026</td>
-  <td class="LawDate">08.04.2026</td>
-  <td class="CSType">Цивільне</td>
-  <td class="CaseNumber">199/2348/23</td>
-  <td class="CourtName">Індустріальний районний суд м.Дніпропетровська</td>
-  <td class="ChairmenName">Петренко О.В.</td>
+  <td class="RegNumber tr1"><a class="doc_text2" href="/Review/118948581" target="_blank">118948581</a></td>
+  <td class="VRType tr1">Ухвала</td>
+  <td class="RegDate tr1">09.05.2024</td>
+  <td class="LawDate tr1"></td>
+  <td class="CSType tr1">Цивільне</td>
+  <td class="CaseNumber tr1">490/3823/24</td>
+  <td class="CourtName tr1">Центральний районний суд м. Миколаєва</td>
+  <td class="ChairmenName tr1">Гуденко О. А.</td>
 </tr>
 <tr>
-  <td class="RegNumber"><a href="/Review/87654321">87654321</a></td>
-  <td class="VRType">Рішення</td>
-  <td class="RegDate">05.04.2026</td>
-  <td class="LawDate">03.04.2026</td>
-  <td class="CSType">Кримінальне</td>
-  <td class="CaseNumber">199/2348/23</td>
-  <td class="CourtName">Індустріальний районний суд м.Дніпропетровська</td>
-  <td class="ChairmenName">Іваненко С.М.</td>
+  <td class="RegNumber tr1"><a class="doc_text2" href="/Review/128228354" target="_blank">128228354</a></td>
+  <td class="VRType tr1">Рішення</td>
+  <td class="RegDate tr1">09.06.2025</td>
+  <td class="LawDate tr1">29.09.2025</td>
+  <td class="CSType tr1">Цивільне</td>
+  <td class="CaseNumber tr1">490/3823/24</td>
+  <td class="CourtName tr1">Центральний районний суд м. Миколаєва</td>
+  <td class="ChairmenName tr1">Гуденко О. А.</td>
 </tr>
 <tr>
-  <td class="RegNumber"><a href="/Review/11111111">11111111</a></td>
-  <td class="VRType">Вирок</td>
-  <td class="RegDate">01.04.2026</td>
-  <td class="LawDate">28.03.2026</td>
-  <td class="CSType">Кримінальне</td>
-  <td class="CaseNumber">202/10407/22</td>
-  <td class="CourtName">Жовтневий районний суд м.Дніпропетровська</td>
-  <td class="ChairmenName">Сидоренко А.П.</td>
+  <td class="RegNumber tr1"><a class="doc_text2" href="/Review/129110090" target="_blank">129110090</a></td>
+  <td class="VRType tr1">Ухвала</td>
+  <td class="RegDate tr1">28.07.2025</td>
+  <td class="LawDate tr1">28.07.2025</td>
+  <td class="CSType tr1">Цивільне</td>
+  <td class="CaseNumber tr1">490/3823/24</td>
+  <td class="CourtName tr1">Миколаївський апеляційний суд</td>
+  <td class="ChairmenName tr1">Самчишина Н. В.</td>
 </tr>
+</tbody>
 </table>
+</div>
 </body>
 </html>
 """
@@ -53,38 +58,39 @@ NO_RESULTS_HTML = """
 
 
 def test_parser():
-    print("=== Test: Parse sample HTML ===")
+    print("=== Test: Parse real ЄДРСР HTML ===")
     results = parse_edrsr_html(SAMPLE_HTML)
     assert len(results) == 3, f"Expected 3 results, got {len(results)}"
     
     # Check first result
     r1 = results[0]
-    assert r1["RegNumber"] == "12345678", f"RegNumber: {r1.get('RegNumber')}"
+    assert r1["RegNumber"] == "118948581", f"RegNumber: {r1.get('RegNumber')}"
     assert r1["VRType"] == "Ухвала", f"VRType: {r1.get('VRType')}"
-    assert r1["LawDate"] == "08.04.2026", f"LawDate: {r1.get('LawDate')}"
-    assert r1["CaseNumber"] == "199/2348/23", f"CaseNumber: {r1.get('CaseNumber')}"
-    assert r1["CourtName"] == "Індустріальний районний суд м.Дніпропетровська"
-    assert r1["ChairmenName"] == "Петренко О.В."
-    assert r1["_href"] == "/Review/12345678"
-    print(f"  ✅ Result 1: {r1['VRType']} — {r1['CaseNumber']} ({r1['LawDate']})")
+    assert r1["RegDate"] == "09.05.2024", f"RegDate: {r1.get('RegDate')}"
+    assert r1["CaseNumber"] == "490/3823/24", f"CaseNumber: {r1.get('CaseNumber')}"
+    assert r1["CourtName"] == "Центральний районний суд м. Миколаєва"
+    assert r1["ChairmenName"] == "Гуденко О. А."
+    assert r1["_href"] == "/Review/118948581"
+    print(f"  ✅ Result 1: {r1['VRType']} — {r1['CaseNumber']} ({r1['RegDate']})")
     
-    # Check second result
+    # Check second result (Рішення with LawDate)
     r2 = results[1]
     assert r2["VRType"] == "Рішення"
-    assert r2["_href"] == "/Review/87654321"
+    assert r2["LawDate"] == "29.09.2025"
+    assert r2["_href"] == "/Review/128228354"
     print(f"  ✅ Result 2: {r2['VRType']} — {r2['CaseNumber']} ({r2['LawDate']})")
     
-    # Check third result (different case)
+    # Check third result (different court - appeal)
     r3 = results[2]
-    assert r3["CaseNumber"] == "202/10407/22"
-    assert r3["VRType"] == "Вирок"
-    print(f"  ✅ Result 3: {r3['VRType']} — {r3['CaseNumber']} ({r3['LawDate']})")
+    assert r3["CourtName"] == "Миколаївський апеляційний суд"
+    assert r3["ChairmenName"] == "Самчишина Н. В."
+    print(f"  ✅ Result 3: {r3['VRType']} — {r3['CourtName']}")
     
     print("\n=== Test: Decision UID ===")
     # Simulate enriched decision
-    r1["review_id"] = "12345678"
+    r1["review_id"] = "118948581"
     uid1 = decision_uid(r1)
-    assert uid1 == "edrsr_12345678", f"UID: {uid1}"
+    assert uid1 == "edrsr_118948581", f"UID: {uid1}"
     print(f"  ✅ UID: {uid1}")
     
     # UID stability
@@ -93,7 +99,7 @@ def test_parser():
     print(f"  ✅ UID is stable across calls")
     
     # Different decisions have different UIDs
-    r2["review_id"] = "87654321"
+    r2["review_id"] = "128228354"
     uid2 = decision_uid(r2)
     assert uid1 != uid2, "Different decisions should have different UIDs"
     print(f"  ✅ Different decisions → different UIDs")
