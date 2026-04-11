@@ -77,9 +77,15 @@ class EDRSRResultParser(HTMLParser):
 
         if tag == "td":
             css_class = attrs_dict.get("class", "").strip()
-            if css_class in self._known_classes:
+            # Classes may have suffixes like "RegNumber tr1"
+            matched = None
+            for part in css_class.split():
+                if part in self._known_classes:
+                    matched = part
+                    break
+            if matched:
                 self._in_td = True
-                self._current_cell_class = css_class
+                self._current_cell_class = matched
                 self._current_text = ""
                 self._current_href = None
 
@@ -543,7 +549,7 @@ def save_state(state: dict):
 
 def main():
     log.info("=" * 50)
-    log.info("ЄДРСР Decision Monitor v2")
+    log.info("ЄДРСР Decision Monitor v3")
     log.info("=" * 50)
 
     # Load config from environment (GitHub Secrets)
