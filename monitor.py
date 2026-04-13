@@ -314,7 +314,7 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
                 ]
             },
         }
-            if start_cursor:
+        if start_cursor:
             payload["start_cursor"] = start_cursor
 
         try:
