@@ -476,6 +476,7 @@ def create_notion_decision(
             },
             json={
                 "parent": {"database_id": NOTION_DECISIONS_DB},
+                "icon": {"type": "emoji", "emoji": "📜"},
                 "properties": props,
             },
             timeout=15,
