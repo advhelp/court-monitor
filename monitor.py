@@ -481,6 +481,7 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page
             },
             json={
                 "parent": {"database_id": db_id},
+                "icon": {"type": "emoji", "emoji": "⚖️"},
                 "properties": props,
             },
             timeout=15,
