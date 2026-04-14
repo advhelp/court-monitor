@@ -9,8 +9,8 @@ X-WR-TIMEZONE:Europe/Kiev
 REFRESH-INTERVAL;VALUE=DURATION:PT1H
 X-PUBLISHED-TTL:PT1H
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-811a-8a9f-fc5326f6443c@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-81b7-b011-de0f5d2eae95@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260416T115000
 DTEND:20260416T125000
 SUMMARY:⚖️ Синенко ст. 345 — 183/9077/21
@@ -20,8 +20,8 @@ DESCRIPTION:Справа: 183/9077/21\nСуддя: Головуючий
  суддя: Ковальчук Т.А.\, суддя-доповідач: 
  Ковальчук Т.А.\nПредмет: Погроза або нас
  ильство щодо працівника правоохоронно
- го органу\nNotion: https://www.notion.so/183-9077-21-16-04-2026-
- 11-50-33d89a7a6cc8811a8a9ffc5326f6443c
+ го органу\nNotion: https://www.notion.so/345-16-04-2026-11-50-34
+ 289a7a6cc881b7b011de0f5d2eae95
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -36,8 +36,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-813f-b132-f70a5c53d883@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-81f3-98ef-ed52c5a21214@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260416T093000
 DTEND:20260416T103000
 SUMMARY:⚖️ Берестов ст. 286 — 199/2348/23
@@ -49,7 +49,7 @@ DESCRIPTION:Справа: 199/2348/23\nСуддя: Головуючий
  авил безпеки дорожнього руху або експл
  уатації транспорту особами\, які керуют
  ь транспортними засобами\nNotion: https://www.noti
- on.so/199-2348-23-16-04-2026-09-30-33d89a7a6cc8813fb132f70a5c53d883
+ on.so/286-16-04-2026-09-30-34289a7a6cc881f398efed52c5a21214
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -64,8 +64,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-81f1-b4d8-f3707d9abb90@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-81b7-93b4-eb6507ecf6a8@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260420T130000
 DTEND:20260420T140000
 SUMMARY:⚖️ Михайленко ст. 130 — 933/509/26
@@ -75,8 +75,8 @@ DESCRIPTION:Справа: 933/509/26\nСуддя: Головуючий с
  уддя: Попович І.А.\, суддя-доповідач: Поп
  ович І.А.\nЗал: 2\nПредмет: відмова від про
  ходження огляду на стан сп'яніння\nNotion: h
- ttps://www.notion.so/933-509-26-20-04-2026-13-00-33d89a7a6cc881f1b4d8f37
- 07d9abb90
+ ttps://www.notion.so/130-20-04-2026-13-00-34289a7a6cc881b793b4eb6507ecf6
+ a8
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -91,8 +91,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-8134-84d2-ec64bf5708dc@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-818f-bbab-e40c9d7717fa@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260421T130000
 DTEND:20260421T140000
 SUMMARY:⚖️ Арестова ст. 190 — 188/488/22
@@ -101,8 +101,8 @@ LOCATION:Петропавлівський районний суд Дні
 DESCRIPTION:Справа: 188/488/22\nСуддя: Головуючий с
  уддя: Місюра К.В.\, суддя-доповідач: Місю
  ра К.В.\nПредмет: ст. 190 ч 1 КК україни\nNotion:
-  https://www.notion.so/188-488-22-21-04-2026-13-00-33d89a7a6cc8813484d2e
- c64bf5708dc
+  https://www.notion.so/190-21-04-2026-13-00-34289a7a6cc8818fbbabe40c9d77
+ 17fa
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -117,8 +117,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33e89a7a-6cc8-81f2-a96f-c7d690928312@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-8196-af88-d4779e83b286@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260422T124500
 DTEND:20260422T134500
 SUMMARY:⚖️ Лях ст. 113 — 932/11516/24
@@ -129,8 +129,8 @@ DESCRIPTION:Справа: 932/11516/24\nСуддя: Головуючий
  гнатьєв Д.П.\, суддя-учасник колегії: Кра
  снокутський С.О.\, суддя-учасник колегії
  : Гузоватий О.І.\nПредмет: Диверсія\nNotion: h
- ttps://www.notion.so/113-22-04-2026-12-45-33e89a7a6cc881f2a96fc7d6909283
- 12
+ ttps://www.notion.so/113-22-04-2026-12-45-34289a7a6cc88196af88d4779e83b2
+ 86
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -145,8 +145,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-813b-b63e-e99b4dbe6944@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-814d-8aee-f56de30a9ad5@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260428T093000
 DTEND:20260428T103000
 SUMMARY:⚖️ Синенко ст. 263 — 179/1344/21
@@ -157,7 +157,7 @@ DESCRIPTION:Справа: 179/1344/21\nСуддя: Головуючий
  ч: Ігольнікова М.О.\nПредмет: Незаконне п
  оводження зі зброєю\, бойовими припасам
  и або вибуховими речовинами\nNotion: https://www
- .notion.so/179-1344-21-28-04-2026-09-30-33d89a7a6cc8813bb63ee99b4dbe6944
+ .notion.so/263-28-04-2026-09-30-34289a7a6cc8814d8aeef56de30a9ad5
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -172,8 +172,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-8104-8a89-eb2695b34394@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-819a-84da-fadef1ef86f9@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260430T090000
 DTEND:20260430T100000
 SUMMARY:⚖️ Аліфанов ч. 2 ст. 286 — 200/19861/17
@@ -185,8 +185,8 @@ DESCRIPTION:Справа: 200/19861/17\nСуддя: Головуючий
  орушення правил безпеки дорожнього рух
  у або експлуатації транспорту особами\,
   які керують транспортними засобами\nNoti
- on: https://www.notion.so/200-19861-17-30-04-2026-09-00-33d89a7a6cc88104
- 8a89eb2695b34394
+ on: https://www.notion.so/2-286-30-04-2026-09-00-34289a7a6cc8819a84dafad
+ ef1ef86f9
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -201,8 +201,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33e89a7a-6cc8-8116-b7cd-dba3e38552de@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-8113-9516-f5682b629822@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260505T150000
 DTEND:20260505T160000
 SUMMARY:⚖️ Синенко ст. 194 — 203/273/22
@@ -213,7 +213,7 @@ DESCRIPTION:Справа: 203/273/22\nСуддя: Головуючий с
  Черваньова Ю.М.\nЗал: Зал судових засіда
  нь №5\nПредмет: Умисне знищення або пошк
  одження майна\nNotion: https://www.notion.so/194-05-05-2026-
- 15-00-33e89a7a6cc88116b7cddba3e38552de
+ 15-00-34289a7a6cc881139516f5682b629822
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -228,8 +228,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33e89a7a-6cc8-81ce-aa97-f8b4c8c74c0b@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-81fa-a479-fe603b79e30e@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260505T140000
 DTEND:20260505T150000
 SUMMARY:⚖️ Мазан — 206/62/26
@@ -244,7 +244,7 @@ DESCRIPTION:Справа: 206/62/26\nСуддя: Головуючий с
   комп'ютерних мережах або зберігається 
  на носіях такої інформації\, вчинені ос
  обою\, яка має право доступу до неї\nNotion: 
- https://www.notion.so/05-05-2026-14-00-33e89a7a6cc881ceaa97f8b4c8c74c0b
+ https://www.notion.so/05-05-2026-14-00-34289a7a6cc881faa479fe603b79e30e
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -259,8 +259,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33e89a7a-6cc8-81c9-84f9-f28b2ef2bd2b@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-817a-9287-f54f103a6b74@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260514T150000
 DTEND:20260514T160000
 SUMMARY:⚖️ Паронік аліменти — 205/7254/25
@@ -269,8 +269,8 @@ LOCATION:Ленінський районний суд м.Дніпропе
 DESCRIPTION:Справа: 205/7254/25\nСуддя: Головуючий 
  суддя: Дорошенко Г.В.\, суддя-доповідач: 
  Дорошенко Г.В.\nПредмет: про стягнення а
- ліментів\nNotion: https://www.notion.so/14-05-2026-15-00-33e89a7
- a6cc881c984f9f28b2ef2bd2b
+ ліментів\nNotion: https://www.notion.so/14-05-2026-15-00-34289a7
+ a6cc8817a9287f54f103a6b74
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -285,8 +285,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-34289a7a-6cc8-817f-8122-eece88891ea1@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-818f-9d20-fc38e1c7f233@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260521T120000
 DTEND:20260521T130000
 SUMMARY:⚖️ Бондаренко ст. 111-1 — 202/10407/22
@@ -295,7 +295,7 @@ DESCRIPTION:Справа: 202/10407/22\nСуддя: Головуючий
  лошин Є.В.\, суддя-учасник колегії: Мачус
  ький О.М.\, суддя-учасник колегії: Бєльче
  нко Л.А.\nNotion: https://www.notion.so/111-1-21-05-2026-12-00-3428
- 9a7a6cc8817f8122eece88891ea1
+ 9a7a6cc8818f9d20fc38e1c7f233
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -310,8 +310,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-81cf-8cc0-d397562f60ba@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-81e3-9497-eaf130b3ff4a@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260521T110000
 DTEND:20260521T120000
 SUMMARY:⚖️ Кудлюк — 171/145/23
@@ -322,8 +322,8 @@ DESCRIPTION:Справа: 171/145/23\nСуддя: Головуючий с
  Н.О.\nЗал: Зал № 33. Тел.: 0974244617\nПредмет: Пр
  ийняття пропозиції\, обіцянки або одерж
  ання неправомірної вигоди службовою ос
- обою\nNotion: https://www.notion.so/171-145-23-21-05-2026-11-00-33d8
- 9a7a6cc881cf8cc0d397562f60ba
+ обою\nNotion: https://www.notion.so/21-05-2026-11-00-34289a7a6cc881e
+ 39497eaf130b3ff4a
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -338,8 +338,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-8100-8ecf-ff1018491d5c@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-81e7-8e50-e93e1cc754de@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260528T104000
 DTEND:20260528T114000
 SUMMARY:⚖️ Кудлюк — 171/145/23
@@ -350,8 +350,8 @@ DESCRIPTION:Справа: 171/145/23\nСуддя: Головуючий с
  Н.О.\nЗал: Зал № 33. Тел.: 0974244617\nПредмет: Пр
  ийняття пропозиції\, обіцянки або одерж
  ання неправомірної вигоди службовою ос
- обою\nNotion: https://www.notion.so/171-145-23-28-05-2026-10-40-33d8
- 9a7a6cc881008ecfff1018491d5c
+ обою\nNotion: https://www.notion.so/28-05-2026-10-40-34289a7a6cc881e
+ 78e50e93e1cc754de
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -366,8 +366,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-34289a7a-6cc8-8126-b743-cd67c074dcc2@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-8120-b0ed-c12326a16f4c@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260603T110000
 DTEND:20260603T120000
 SUMMARY:⚖️ Устимов ст. 286 — 205/3495/26
@@ -379,7 +379,7 @@ DESCRIPTION:Справа: 205/3495/26\nСуддя: Головуючий
  ил безпеки дорожнього руху або експлуа
  тації транспорту особами\, які керують 
  транспортними засобами\nNotion: https://www.notion.
- so/286-03-06-2026-11-00-34289a7a6cc88126b743cd67c074dcc2
+ so/286-03-06-2026-11-00-34289a7a6cc88120b0edc12326a16f4c
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -394,8 +394,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33d89a7a-6cc8-814d-bd9e-f8afaf0f2885@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-81fb-9cab-feef7b155180@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260603T000000
 DTEND:20260603T010000
 SUMMARY:⚖️ Берестов мобілізація — 160/35450/25
@@ -405,8 +405,8 @@ DESCRIPTION:Справа: 160/35450/25\nСуддя: Головуючий
  суддя: Щербак А.А.\, суддя-доповідач: Щер
  бак А.А.\, суддя-учасник колегії: Баранни
  к Н.П.\, суддя-учасник колегії:  Малиш Н.І.
- \nNotion: https://www.notion.so/160-35450-25-03-06-2026-00-00-33d89a7a6c
- c8814dbd9ef8afaf0f2885
+ \nNotion: https://www.notion.so/03-06-2026-00-00-34289a7a6cc881fb9cabfee
+ f7b155180
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -421,8 +421,8 @@ TRIGGER:-PT1H
 END:VALARM
 END:VEVENT
 BEGIN:VEVENT
-UID:hearing-33e89a7a-6cc8-81aa-b5b4-fedb6bf9cdcb@court-monitor.advhelp
-DTSTAMP:20260414T104352Z
+UID:hearing-34289a7a-6cc8-8147-945c-f66640f16de6@court-monitor.advhelp
+DTSTAMP:20260414T105035Z
 DTSTART:20260624T100000
 DTEND:20260624T110000
 SUMMARY:⚖️ Фесонюк ДТП — 932/20320/25
@@ -431,8 +431,8 @@ LOCATION:Бабушкінський районний суд м.Дніпр
 DESCRIPTION:Справа: 932/20320/25\nСуддя: Головуючий 
  суддя: Рибкін О.А.\, суддя-доповідач: Риб
  кін О.А.\nЗал: 304\nПредмет: Про відшкодува
- ння шкоди\nNotion: https://www.notion.so/24-06-2026-10-00-33e89a
- 7a6cc881aab5b4fedb6bf9cdcb
+ ння шкоди\nNotion: https://www.notion.so/24-06-2026-10-00-34289a
+ 7a6cc88147945cf66640f16de6
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
