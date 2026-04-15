@@ -620,6 +620,8 @@ def main():
                 "date": d.get("LawDate", ""),
                 "seen": datetime.now().isoformat(),
             }
+            state["decisions"] = known_decisions
+            save_state(state)
 
             # Write to Notion
             create_notion_decision(
