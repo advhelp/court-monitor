@@ -28,4 +28,5 @@ jobs:
           git config user.email "bot@local"
           git add edrsr_state.json 2>/dev/null || true
           git diff --staged --quiet || git commit -m "Update ЄДРСР state [skip ci]"
+          git pull --rebase || true
           git push
