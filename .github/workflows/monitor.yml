@@ -31,4 +31,5 @@ jobs:
           git config user.email "bot@local"
           git add state.json debug_headers.json docs/hearings.ics 2>/dev/null || true
           git diff --staged --quiet || git commit -m "Update state and calendar [skip ci]"
+          git pull --rebase || true
           git push
