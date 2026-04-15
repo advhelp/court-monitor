@@ -217,7 +217,6 @@ def search_edrsr(case_number: str, session: requests.Session) -> list[dict]:
     decisions = parse_edrsr_html(html)
 
     if decisions:
-        log.info(f"  {case_number}: found {len(decisions)} decisions")
         # Enrich with full URL and review_id
         for d in decisions:
             href = d.pop("_href", "")
