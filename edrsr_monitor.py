@@ -554,7 +554,27 @@ def save_state(state: dict):
 
 
 # ─── Main ────────────────────────────────────────────────────────
-
+def decision_exists_in_notion(token: str, review_id: str) -> bool:
+    try:
+        r = requests.post(
+            f"https://api.notion.com/v1/databases/{NOTION_DECISIONS_DB}/query",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Notion-Version": "2022-06-28",
+            },
+            json={
+                "filter": {
+                    "property": "Посилання ЄДРСР",
+                    "url": {"equals": f"https://reyestr.court.gov.ua/Review/{review_id}"}
+                },
+                "page_size": 1,
+            },
+            timeout=10,
+        )
+        return len(r.json().get("results", [])) > 0
+    except Exception:
+        return False
 def main():
     log.info("=" * 50)
     log.info("ЄДРСР Decision Monitor v3")
