@@ -401,7 +401,33 @@ def map_form(form_str: str) -> str | None:
             return val
     return None
 
-
+def hearing_exists_in_notion(token: str, db_id: str, case_num: str, date_str: str) -> bool:
+    """Перевіряє чи засідання вже є в Notion по справі і даті."""
+    try:
+        iso_date, _ = parse_date(date_str) if date_str else (None, None)
+        if not iso_date:
+            return False
+        r = requests.post(
+            f"https://api.notion.com/v1/databases/{db_id}/query",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Notion-Version": "2022-06-28",
+            },
+            json={
+                "filter": {
+                    "and": [
+                        {"property": "Номер справи", "rich_text": {"equals": case_num}},
+                        {"property": "Дата засідання", "date": {"equals": iso_date}},
+                    ]
+                },
+                "page_size": 1,
+            },
+            timeout=10,
+        )
+        return len(r.json().get("results", [])) > 0
+    except Exception:
+        return False
 def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page_id: str | None = None, case_name: str | None = None):
     """Create a page in ⚖️ Засідання database, linked to Кейси АБ via relation."""
     if not token or not db_id:
@@ -999,14 +1025,19 @@ def main():
                 config.get("telegram_chat_id", ""),
                 format_tg_message(row, cm, case_name=case_name),
             )
-            # Notion: create hearing page with relation to case
-            create_notion_hearing(
-                notion_token,
-                config.get("notion_database_id", NOTION_HEARINGS_DB),
-                row,
-                cm,
-                case_page_id=case_page_id,
-                case_name=case_name,
+            # Перевірка дубля в Notion
+            date_val = row.get(cm["date"], "") if cm["date"] else ""
+            if hearing_exists_in_notion(notion_token, config.get("notion_database_id", NOTION_HEARINGS_DB), case_num, date_val):
+                log.info(f"  вже існує в Notion {case_num}, пропускаємо")
+            else:
+                # Notion: create hearing page with relation to case
+                create_notion_hearing(
+                    notion_token,
+                    config.get("notion_database_id", NOTION_HEARINGS_DB),
+                    row,
+                    cm,
+                    case_page_id=case_page_id,
+                    case_name=case_name,
             )
 
     # Clean old entries (90 days)
