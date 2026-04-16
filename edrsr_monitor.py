@@ -641,7 +641,11 @@ def main():
             }
             state["decisions"] = known_decisions
             save_state(state)
-
+            # Перевірка дубля в Notion
+                review_id = d.get("review_id", "")
+                if review_id and decision_exists_in_notion(notion_token, review_id):
+                    log.info(f"  вже існує в Notion, пропускаємо")
+                    continue
             # Write to Notion
             create_notion_decision(
                 notion_token, d,
