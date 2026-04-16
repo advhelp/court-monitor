@@ -1038,7 +1038,7 @@ def main():
                     cm,
                     case_page_id=case_page_id,
                     case_name=case_name,
-            )
+                )
 
     # Clean old entries (90 days)
     cutoff = (datetime.now() - timedelta(days=90)).isoformat()
