@@ -450,8 +450,6 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page
     # Build title — use case name if available, fallback to case number
     display_name = case_name if case_name else f"Засідання {case_num}"
     title = display_name
-    if date_str:
-        title += f" — {date_str}"
 
     # Properties matching ⚖️ Засідання schema
     props = {
@@ -493,10 +491,6 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page
             props[prop] = {"rich_text": [{"text": {"content": val}}]}
 
     # Form of proceedings
-    if form:
-        notion_form = map_form(form)
-        if notion_form:
-            props["Форма судочинства"] = {"select": {"name": notion_form}}
 
     # Create page
     try:
