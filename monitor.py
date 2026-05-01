@@ -1,5 +1,5 @@
 """
-Court Hearing Monitor v2 — Моніторинг судових засідань
+Court Hearing Monitor v10 — Моніторинг судових засідань
 CSV ДСА → фільтрація → Notion (⚖️ Засідання) + Telegram
 """
 
@@ -428,6 +428,8 @@ def hearing_exists_in_notion(token: str, db_id: str, case_num: str, date_str: st
         return len(r.json().get("results", [])) > 0
     except Exception:
         return False
+
+
 def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page_id: str | None = None, case_name: str | None = None):
     """Create a page in ⚖️ Засідання database, linked to Кейси АБ via relation."""
     if not token or not db_id:
@@ -587,7 +589,6 @@ def delete_past_hearings(token: str, db_id: str) -> int:
     if not token or not db_id:
         return 0
 
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
     deleted = 0
     has_more = True
     start_cursor = None
@@ -647,6 +648,83 @@ def delete_past_hearings(token: str, db_id: str) -> int:
         log.info(f"Deleted {deleted} past hearings from Notion")
     else:
         log.info("No past hearings to delete")
+    return deleted
+
+
+def delete_archived_case_hearings(token: str, db_id: str, active_case_numbers: set[str]) -> int:
+    """Delete hearings linked to archived/completed cases.
+
+    Compares all hearings in Notion against the set of active case numbers.
+    If a hearing's case number is NOT in the active set, it means the case
+    has been archived/completed — so the hearing is deleted.
+    """
+    if not token or not db_id or not active_case_numbers:
+        return 0
+
+    deleted = 0
+    has_more = True
+    start_cursor = None
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+    while has_more:
+        payload = {"page_size": 100}
+        if start_cursor:
+            payload["start_cursor"] = start_cursor
+
+        try:
+            r = requests.post(
+                f"https://api.notion.com/v1/databases/{db_id}/query",
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except requests.RequestException as e:
+            log.error(f"Failed to query hearings for archive cleanup: {e}")
+            return deleted
+
+        for page in data.get("results", []):
+            page_id = page["id"]
+            props = page.get("properties", {})
+
+            # Get case number from hearing
+            case_prop = props.get("Номер справи", {})
+            rich_text = case_prop.get("rich_text", [])
+            case_num = "".join(rt.get("plain_text", "") for rt in rich_text).strip()
+
+            if not case_num:
+                continue
+
+            # If case number is NOT among active cases — delete hearing
+            if case_num not in active_case_numbers:
+                try:
+                    ar = requests.patch(
+                        f"https://api.notion.com/v1/pages/{page_id}",
+                        headers=headers,
+                        json={"archived": True},
+                        timeout=10,
+                    )
+                    if ar.status_code == 200:
+                        deleted += 1
+                        log.info(f"  Archived hearing for inactive case {case_num}")
+                    else:
+                        log.warning(f"Failed to archive hearing {page_id}: {ar.status_code}")
+                except requests.RequestException as e:
+                    log.error(f"Error archiving hearing {page_id}: {e}")
+
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
+
+    if deleted:
+        log.info(f"Deleted {deleted} hearings for archived/completed cases")
+    else:
+        log.info("No hearings for archived cases to delete")
     return deleted
 
 
@@ -915,7 +993,7 @@ def notify_calendar_url_once(config: dict, state: dict) -> bool:
 
 def main():
     log.info("=" * 50)
-    log.info("Court Hearing Monitor v9 (auto-cleanup past)")
+    log.info("Court Hearing Monitor v10 (cleanup archived cases)")
     log.info("=" * 50)
 
     config = load_config()
@@ -936,10 +1014,14 @@ def main():
         sys.exit(1)
 
     case_list = list(cases_map.keys())
+    active_case_numbers = set(case_list)
 
     # Clean up past hearings from Notion (keeps rollup accurate)
     hearings_db = config.get("notion_database_id", NOTION_HEARINGS_DB)
     delete_past_hearings(notion_token, hearings_db)
+
+    # Clean up hearings for archived/completed cases
+    delete_archived_case_hearings(notion_token, hearings_db, active_case_numbers)
 
     rows, cm = download_and_filter(case_list)
 
