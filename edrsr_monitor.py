@@ -299,8 +299,8 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
             "page_size": 100,
             "filter": {
                 "and": [
-                    {"property": "Статус", "status": {"does_not_equal": "архів"}},
-                    {"property": "Статус", "status": {"does_not_equal": "успіх"}},
+                    {"property": "Етап", "status": {"does_not_equal": "архів"}},
+                    {"property": "Етап", "status": {"does_not_equal": "успіх"}},
                 ]
             },
         }
@@ -309,6 +309,8 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
 
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=30)
+            if not r.ok:
+                log.error(f"Notion API {r.status_code}: {r.text[:500]}")
             r.raise_for_status()
             data = r.json()
         except requests.RequestException as e:
