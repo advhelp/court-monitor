@@ -239,9 +239,11 @@ def main():
                 chat_id = get_property_number(client_page, "Telegram Chat ID")
 
                 role_prop = client_page.get("properties", {}).get("Роль у справі", {})
-                role_names = [r.get("name", "") for r in role_prop.get("multi_select", [])]
-                if "опонент" in role_names and "клієнт" not in role_names:
-                    print(f"  Skipping opponent: {client_name}")
+                role_obj = role_prop.get("select")
+                role = role_obj.get("name", "") if role_obj else ""
+                # Send reminder ONLY to clients (not opponents, courts, witnesses, etc.)
+                if role != "клієнт":
+                    print(f"  Skipping non-client (role: {role or 'none'}): {client_name}")
                     continue
 
                 if not chat_id:
