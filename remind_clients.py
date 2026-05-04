@@ -252,10 +252,10 @@ def main():
                 print(f"  Error fetching case {case_id}: {e}")
                 continue
 
-            # 3. Get linked clients
-            client_ids = get_relation_ids(case_page, "👤 Клієнти АБ")
+# 3. Get linked clients (relation field renamed: "👤 Клієнти АБ" -> "Учасники")
+            client_ids = get_relation_ids(case_page, "Учасники")
             if not client_ids:
-                print(f"  No clients linked to case")
+                print(f"  No clients linked to case (field 'Учасники' empty or missing)")
                 continue
 
             for client_id in client_ids:
@@ -269,9 +269,10 @@ def main():
                 chat_id = get_property_number(client_page, "Telegram Chat ID")
 
                 # Check role — only notify clients, not opponents
-                role_prop = client_page.get("properties", {}).get("Роль", {})
-                role = role_prop.get("select", {})
-                if role and role.get("name") == "опонент":
+                # Field "Роль у справі" is multi_select (array), not select
+                role_prop = client_page.get("properties", {}).get("Роль у справі", {})
+                role_names = [r.get("name", "") for r in role_prop.get("multi_select", [])]
+                if "опонент" in role_names and "клієнт" not in role_names:
                     print(f"  Skipping opponent: {client_name}")
                     continue
 
