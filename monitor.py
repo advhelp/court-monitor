@@ -645,27 +645,52 @@ def delete_past_hearings(token: str, db_id: str) -> int:
     return deleted
 
 
-def delete_archived_case_hearings(token: str, db_id: str, active_case_numbers: set[str]) -> int:
+def delete_archived_case_hearings(
+    token: str,
+    db_id: str,
+    active_case_numbers: set[str],
+    state: dict,
+) -> int:
     """Delete hearings linked to archived/completed cases.
 
     Compares all hearings in Notion against the set of active case numbers.
     If a hearing's case number is NOT in the active set, it means the case
     has been archived/completed — so the hearing is deleted.
+
+    SAFETY: uses dynamic threshold based on previous successful run.
+    Skips cleanup if active cases dropped >50% since last run.
     """
     if not token or not db_id or not active_case_numbers:
         return 0
 
-    # SAFETY: refuse to run if active cases count is suspiciously low.
-    # This prevents mass deletion when fetch_cases_from_notion returns a
-    # partial/broken result (e.g. wrong field name, partial pagination).
-    MIN_ACTIVE_CASES = 30
-    if len(active_case_numbers) < MIN_ACTIVE_CASES:
-        log.warning(
-            f"Active cases count ({len(active_case_numbers)}) below safety "
-            f"threshold ({MIN_ACTIVE_CASES}) — skipping cleanup to prevent "
-            f"mass deletion. Investigate fetch_cases_from_notion output."
+    # SAFETY: dynamic threshold based on previous run.
+    # Protects against API errors, partial pagination, accidental mass-archive.
+    current_count = len(active_case_numbers)
+    last_count = state.get("last_active_cases_count")
+
+    if last_count is None:
+        # First run ever — record baseline, skip cleanup just to be safe
+        log.info(
+            f"First run: recording baseline of {current_count} active cases. "
+            f"Cleanup will start from next run."
         )
+        state["last_active_cases_count"] = current_count
         return 0
+
+    drop_ratio = (last_count - current_count) / last_count if last_count > 0 else 0
+
+    if drop_ratio > 0.5:
+        log.warning(
+            f"Active cases dropped sharply: {last_count} -> {current_count} "
+            f"({drop_ratio*100:.0f}% decrease). Skipping cleanup to prevent "
+            f"mass deletion. If this is intentional, run will normalize next time."
+        )
+        # Update baseline so next run can resume normally
+        state["last_active_cases_count"] = current_count
+        return 0
+
+    # Normal operation — update baseline and proceed
+    state["last_active_cases_count"] = current_count
 
     deleted = 0
     has_more = True
