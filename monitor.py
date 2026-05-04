@@ -1115,49 +1115,59 @@ def main():
         save_state(state)
         return
 
-    # Find new hearings
+    # Process all hearings — Notion is the source of truth for "exists",
+    # state is only used to decide whether to send Telegram notification.
     known = state.get("hearings", {})
-    new_items = []
+    notified_count = 0
+    created_count = 0
+
+    log.info(f"Processing {len(rows)} hearings from CSV")
 
     for row in rows:
         hid = hearing_id(row, cm)
+        case_num = row.get(cm["case"], "").strip()
+        case_info = cases_map.get(case_num) or {}
+        case_page_id = case_info.get("page_id")
+        case_name = case_info.get("name")
+        date_val = row.get(cm["date"], "") if cm["date"] else ""
+
+        # Check Notion (not state) for existence
+        already_in_notion = hearing_exists_in_notion(
+            notion_token,
+            config.get("notion_database_id", NOTION_HEARINGS_DB),
+            case_num,
+            date_val,
+        )
+
+        # Send Telegram only if we haven't notified about this hash before
         if hid not in known:
-            new_items.append(row)
-            known[hid] = {
-                "case": row.get(cm["case"], ""),
-                "date": row.get(cm["date"], "") if cm["date"] else "",
-                "seen": datetime.now().isoformat(),
-            }
-
-    log.info(f"Total: {len(rows)}, New: {len(new_items)}")
-
-    if new_items:
-        for row in new_items:
-            case_num = row.get(cm["case"], "").strip()
-            case_info = cases_map.get(case_num) or {}
-            case_page_id = case_info.get("page_id")
-            case_name = case_info.get("name")
-
-            # Telegram notification
             send_telegram(
                 config.get("telegram_bot_token", ""),
                 config.get("telegram_chat_id", ""),
                 format_tg_message(row, cm, case_name=case_name),
             )
-            # Перевірка дубля в Notion
-            date_val = row.get(cm["date"], "") if cm["date"] else ""
-            if hearing_exists_in_notion(notion_token, config.get("notion_database_id", NOTION_HEARINGS_DB), case_num, date_val):
-                log.info(f"  вже існує в Notion {case_num}, пропускаємо")
-            else:
-                # Notion: create hearing page with relation to case
-                create_notion_hearing(
-                    notion_token,
-                    config.get("notion_database_id", NOTION_HEARINGS_DB),
-                    row,
-                    cm,
-                    case_page_id=case_page_id,
-                    case_name=case_name,
-                )
+            notified_count += 1
+            known[hid] = {
+                "case": case_num,
+                "date": date_val,
+                "seen": datetime.now().isoformat(),
+            }
+
+        # Create in Notion only if missing
+        if already_in_notion:
+            log.info(f"  already in Notion: {case_num}")
+        else:
+            create_notion_hearing(
+                notion_token,
+                config.get("notion_database_id", NOTION_HEARINGS_DB),
+                row,
+                cm,
+                case_page_id=case_page_id,
+                case_name=case_name,
+            )
+            created_count += 1
+
+    log.info(f"Created in Notion: {created_count}, Telegram notifications sent: {notified_count}")
 
     # Clean old entries (90 days)
     cutoff = (datetime.now() - timedelta(days=90)).isoformat()
