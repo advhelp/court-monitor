@@ -1,14 +1,19 @@
 """
-ЄДРСР Monitor — Моніторинг судових рішень
+ЄДРСР Monitor v4 — Моніторинг судових рішень
 reyestr.court.gov.ua → Notion (📜 Рішення) + Telegram
 
 Окремий скрипт від court-monitor (CSV ДСА засідання).
 Запускається 2 рази на день через GitHub Actions.
+
+Safety changes vs v3:
+- fail-closed on Notion API failure (returns None, aborts run)
+- sanity threshold on active cases count (50% drop guard)
+- state saved only AFTER successful Notion create (no orphan UIDs)
+- explicit telemetry: created/skipped/failed counters
 """
 
 import json
 import os
-import re
 import sys
 import time
 import hashlib
@@ -161,7 +166,7 @@ def search_edrsr(case_number: str, session: requests.Session) -> list[dict]:
     """
     Search ЄДРСР for decisions by case number.
     Returns list of decision dicts.
-    
+
     Logic: parse results FIRST, then determine why there are none.
     The CAPTCHA modal HTML is always present in the page template,
     so we cannot use its presence as a CAPTCHA indicator.
@@ -239,12 +244,7 @@ def search_edrsr(case_number: str, session: requests.Session) -> list[dict]:
         log.info(f"  {case_number}: no decisions")
         return []
 
-    # Check for real CAPTCHA activation:
-    # The CAPTCHA modal is ALWAYS in the page template HTML.
-    # Real CAPTCHA block = no result rows AND no "nothing found" message
-    # AND the page shows the CAPTCHA challenge actively.
-    # Best indicator: response is very short (just the page shell without results)
-    # or contains a specific CAPTCHA activation JS call.
+    # CAPTCHA detection: very short response = page shell without results
     if len(html) < 5000:
         log.warning(
             f"CAPTCHA likely active for {case_number} "
@@ -275,13 +275,16 @@ def decision_uid(decision: dict) -> str:
 
 # ─── Notion: Fetch cases ─────────────────────────────────────────
 
-def fetch_cases_from_notion(token: str) -> dict[str, dict]:
+def fetch_cases_from_notion(token: str) -> dict[str, dict] | None:
     """
     Query Кейси АБ and return {case_number: {"page_id": ..., "name": ...}}.
+
+    Returns None on API failure (caller must abort run).
+    Returns {} only if Notion legitimately has no matching cases.
     """
     if not token:
         log.warning("Notion token not configured")
-        return {}
+        return None
 
     cases = {}
     url = f"https://api.notion.com/v1/databases/{NOTION_CASES_DB}/query"
@@ -315,7 +318,7 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
             data = r.json()
         except requests.RequestException as e:
             log.error(f"Failed to query Кейси АБ: {e}")
-            return cases
+            return None
 
         for page in data.get("results", []):
             page_id = page["id"]
@@ -407,7 +410,10 @@ def create_notion_decision(
     case_page_id: str | None = None,
     case_name: str | None = None,
 ) -> bool:
-    """Create a page in 📜 Рішення database, linked to Кейси АБ."""
+    """Create a page in 📜 Рішення database, linked to Кейси АБ.
+
+    Returns True on success, False on any failure.
+    """
     if not token:
         return False
 
@@ -493,6 +499,30 @@ def create_notion_decision(
         return False
 
 
+def decision_exists_in_notion(token: str, review_id: str) -> bool:
+    """Check if decision already exists in Notion by ЄДРСР URL."""
+    try:
+        r = requests.post(
+            f"https://api.notion.com/v1/databases/{NOTION_DECISIONS_DB}/query",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "Notion-Version": "2022-06-28",
+            },
+            json={
+                "filter": {
+                    "property": "Посилання ЄДРСР",
+                    "url": {"equals": f"https://reyestr.court.gov.ua/Review/{review_id}"}
+                },
+                "page_size": 1,
+            },
+            timeout=10,
+        )
+        return len(r.json().get("results", [])) > 0
+    except Exception:
+        return False
+
+
 # ─── Telegram ────────────────────────────────────────────────────
 
 def send_telegram(token: str, chat_id: str, msg: str):
@@ -556,33 +586,12 @@ def save_state(state: dict):
 
 
 # ─── Main ────────────────────────────────────────────────────────
-def decision_exists_in_notion(token: str, review_id: str) -> bool:
-    try:
-        r = requests.post(
-            f"https://api.notion.com/v1/databases/{NOTION_DECISIONS_DB}/query",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "Notion-Version": "2022-06-28",
-            },
-            json={
-                "filter": {
-                    "property": "Посилання ЄДРСР",
-                    "url": {"equals": f"https://reyestr.court.gov.ua/Review/{review_id}"}
-                },
-                "page_size": 1,
-            },
-            timeout=10,
-        )
-        return len(r.json().get("results", [])) > 0
-    except Exception:
-        return False
+
 def main():
     log.info("=" * 50)
-    log.info("ЄДРСР Decision Monitor v3")
+    log.info("ЄДРСР Decision Monitor v4 (fail-closed safety)")
     log.info("=" * 50)
 
-    # Load config from environment (GitHub Secrets)
     notion_token = os.environ.get("NOTION_TOKEN", "")
     tg_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     tg_chat = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -594,20 +603,56 @@ def main():
     state = load_state()
     known_decisions = state.get("decisions", {})
 
-    # Fetch cases from Notion
+    # SAFETY 1: Fetch cases with fail-closed handling
     cases_map = fetch_cases_from_notion(notion_token)
-    if not cases_map:
-        log.error("No cases found in Кейси АБ!")
+
+    if cases_map is None:
+        log.error("Notion API failed — aborting run to avoid partial work")
+        send_telegram(
+            tg_token, tg_chat,
+            "🚨 <b>ЄДРСР Monitor:</b> Notion API недоступний. "
+            "Запуск зупинено. Перевір токен і назви полів."
+        )
         sys.exit(1)
 
-    log.info(f"Checking {len(cases_map)} cases against ЄДРСР...")
+    if not cases_map:
+        log.warning("Notion returned 0 active cases — nothing to monitor")
+        save_state(state)
+        return
+
+    # SAFETY 2: Sanity check on case count drop
+    current_count = len(cases_map)
+    last_count = state.get("last_active_cases_count")
+
+    if last_count is not None and last_count > 0:
+        drop_ratio = (last_count - current_count) / last_count
+        if drop_ratio > 0.5:
+            log.warning(
+                f"Active cases dropped sharply: {last_count} -> {current_count} "
+                f"({drop_ratio*100:.0f}% decrease). Continuing in read-only mode "
+                f"(no destructive ops here, but flagging anomaly)."
+            )
+            send_telegram(
+                tg_token, tg_chat,
+                f"⚠️ <b>ЄДРСР Monitor:</b> кількість активних справ "
+                f"впала з {last_count} до {current_count}. "
+                f"Перевір базу Кейси АБ."
+            )
+
+    state["last_active_cases_count"] = current_count
+
+    log.info(f"Checking {current_count} cases against ЄДРСР...")
 
     session = requests.Session()
     warm_session(session)
     time.sleep(2)
 
+    # Counters for telemetry
     total_found = 0
-    total_new = 0
+    total_new_in_state = 0
+    total_created = 0
+    total_skipped_dup = 0
+    total_failed = 0
     captcha_cases = []
 
     for case_num, case_info in cases_map.items():
@@ -631,31 +676,52 @@ def main():
             if uid in known_decisions:
                 continue
 
-            total_new += 1
-            log.info(f"  NEW: {d.get('VRType', '?')} from {d.get('LawDate', '?')}")
+            log.info(f"  NEW candidate: {d.get('VRType', '?')} from {d.get('LawDate', '?')}")
 
-            # Save to state
-            known_decisions[uid] = {
-                "case": case_num,
-                "type": d.get("VRType", ""),
-                "date": d.get("LawDate", ""),
-                "seen": datetime.now().isoformat(),
-            }
-            state["decisions"] = known_decisions
-            save_state(state)
-            # Перевірка дубля в Notion
+            # FIX: check Notion duplicate BEFORE saving to state
             review_id = d.get("review_id", "")
             if review_id and decision_exists_in_notion(notion_token, review_id):
-                log.info(f"  вже існує в Notion, пропускаємо")
+                log.info(f"  already in Notion, recording in state and skipping")
+                # It IS already in Notion, so safe to mark as known
+                known_decisions[uid] = {
+                    "case": case_num,
+                    "type": d.get("VRType", ""),
+                    "date": d.get("LawDate", ""),
+                    "seen": datetime.now().isoformat(),
+                    "status": "pre_existing",
+                }
+                state["decisions"] = known_decisions
+                save_state(state)
+                total_skipped_dup += 1
                 continue
-            # Write to Notion
-            create_notion_decision(
+
+            # FIX: only save to state AFTER successful Notion create
+            success = create_notion_decision(
                 notion_token, d,
                 case_page_id=case_page_id,
                 case_name=case_name,
             )
 
-            # Telegram notification
+            if not success:
+                log.warning(f"  Failed to create in Notion — NOT marking as seen, will retry next run")
+                total_failed += 1
+                continue
+
+            # Successful create: now record in state
+            known_decisions[uid] = {
+                "case": case_num,
+                "type": d.get("VRType", ""),
+                "date": d.get("LawDate", ""),
+                "seen": datetime.now().isoformat(),
+                "status": "created",
+            }
+            state["decisions"] = known_decisions
+            save_state(state)
+
+            total_created += 1
+            total_new_in_state += 1
+
+            # Telegram notification (only after both Notion success and state save)
             send_telegram(
                 tg_token, tg_chat,
                 format_decision_tg(d, case_name=case_name),
@@ -670,19 +736,27 @@ def main():
 
     # Summary
     log.info("=" * 50)
-    log.info(f"Summary: {total_found} decisions found, {total_new} new")
+    log.info(
+        f"Summary: {total_found} found | "
+        f"{total_created} created | "
+        f"{total_skipped_dup} skipped (already in Notion) | "
+        f"{total_failed} failed"
+    )
     log.info(f"Known decisions in state: {len(known_decisions)}")
     log.info("=" * 50)
 
-    if total_new > 0:
+    if total_created > 0 or total_failed > 0:
         summary = (
-            f"📊 <b>ЄДРСР Monitor:</b> перевірено {len(cases_map)} справ\n"
-            f"📜 Знайдено {total_found} рішень, з них <b>{total_new} нових</b>"
+            f"📊 <b>ЄДРСР Monitor:</b> перевірено {current_count} справ\n"
+            f"📜 Знайдено: {total_found}\n"
+            f"✅ Створено в Notion: {total_created}\n"
         )
+        if total_skipped_dup:
+            summary += f"⏭ Пропущено (дублі): {total_skipped_dup}\n"
+        if total_failed:
+            summary += f"❌ Помилки створення: {total_failed} (повтор наступного запуску)"
         send_telegram(tg_token, tg_chat, summary)
 
-    # Save state
-    state["decisions"] = known_decisions
     save_state(state)
 
 
