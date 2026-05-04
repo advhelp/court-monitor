@@ -1058,7 +1058,7 @@ def main():
     delete_past_hearings(notion_token, hearings_db)
 
     # Clean up hearings for archived/completed cases
-    delete_archived_case_hearings(notion_token, hearings_db, active_case_numbers)
+    delete_archived_case_hearings(notion_token, hearings_db, active_case_numbers, state)
 
     rows, cm = download_and_filter(case_list)
 
