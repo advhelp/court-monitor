@@ -997,15 +997,22 @@ def main():
     notion_token = config.get("notion_token", "")
     cases_map = fetch_cases_from_notion(notion_token)
 
-    # Fallback: use config.json if Notion returned nothing
-    if not cases_map:
-        log.warning("No cases from Notion, falling back to config.json")
-        fallback_cases = config.get("case_numbers", [])
-        cases_map = {cn: {"page_id": None, "name": None} for cn in fallback_cases}
-
-    if not cases_map:
-        log.error("No case numbers available (neither Notion nor config)!")
+    # SAFETY: API failure must abort, not fall through
+    if cases_map is None:
+        log.error("Notion API failed — aborting run to prevent data corruption")
+        send_telegram(
+            config.get("telegram_bot_token", ""),
+            config.get("telegram_chat_id", ""),
+            "🚨 <b>Court Monitor:</b> Notion API недоступний. "
+            "Запуск зупинено щоб не видалити дані. Перевір токен і назви полів.",
+        )
         sys.exit(1)
+
+    # SAFETY: empty result is suspicious — skip cleanup, don't process CSV
+    if not cases_map:
+        log.warning("Notion returned 0 cases — skipping run, no cleanup performed")
+        save_state(state)
+        return
 
     case_list = list(cases_map.keys())
     active_case_numbers = set(case_list)
