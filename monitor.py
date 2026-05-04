@@ -655,10 +655,21 @@ def delete_archived_case_hearings(token: str, db_id: str, active_case_numbers: s
     if not token or not db_id or not active_case_numbers:
         return 0
 
+    # SAFETY: refuse to run if active cases count is suspiciously low.
+    # This prevents mass deletion when fetch_cases_from_notion returns a
+    # partial/broken result (e.g. wrong field name, partial pagination).
+    MIN_ACTIVE_CASES = 30
+    if len(active_case_numbers) < MIN_ACTIVE_CASES:
+        log.warning(
+            f"Active cases count ({len(active_case_numbers)}) below safety "
+            f"threshold ({MIN_ACTIVE_CASES}) — skipping cleanup to prevent "
+            f"mass deletion. Investigate fetch_cases_from_notion output."
+        )
+        return 0
+
     deleted = 0
     has_more = True
     start_cursor = None
-
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
