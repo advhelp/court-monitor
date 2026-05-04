@@ -280,7 +280,7 @@ def format_tg_message(row: dict, cm: dict, case_name: str | None = None) -> str:
 _case_title_cache: dict[str, str] = {}
 
 
-def fetch_cases_from_notion(token: str) -> dict[str, dict]:
+def fetch_cases_from_notion(token: str) -> dict[str, dict] | None:
     """
     Query Кейси АБ database and return dict: {case_number: {"page_id": ..., "name": ...}}.
     Also populates _case_title_cache as a side effect for fast title lookups.
@@ -323,7 +323,7 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
             data = r.json()
         except requests.RequestException as e:
             log.error(f"Failed to query Кейси АБ: {e}")
-            return cases
+            return None
 
         for page in data.get("results", []):
             page_id = page["id"]
