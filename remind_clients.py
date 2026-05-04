@@ -252,7 +252,7 @@ def main():
                 print(f"  Error fetching case {case_id}: {e}")
                 continue
 
-# 3. Get linked clients (relation field renamed: "👤 Клієнти АБ" -> "Учасники")
+        # 3. Get linked clients (relation field renamed: "👤 Клієнти АБ" -> "Учасники")
             client_ids = get_relation_ids(case_page, "Учасники")
             if not client_ids:
                 print(f"  No clients linked to case (field 'Учасники' empty or missing)")
@@ -284,7 +284,7 @@ def main():
                     })
                     continue
 
-                # 4. Send reminder
+        # 4. Send reminder
                 message = build_client_message(info)
                 try:
                     result = send_message(int(chat_id), message)
