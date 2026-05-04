@@ -309,8 +309,8 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict]:
             "page_size": 100,
             "filter": {
                 "and": [
-                    {"property": "Статус", "status": {"does_not_equal": "архів"}},
-                    {"property": "Статус", "status": {"does_not_equal": "успіх"}},
+                    {"property": "Етап", "status": {"does_not_equal": "архів"}},
+                    {"property": "Етап", "status": {"does_not_equal": "успіх"}},
                 ]
             },
         }
