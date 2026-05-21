@@ -401,8 +401,14 @@ def map_form(form_str: str) -> str | None:
             return val
     return None
 
-def hearing_exists_in_notion(token: str, db_id: str, case_num: str, date_str: str) -> bool:
-    """Перевіряє чи засідання вже є в Notion по справі і даті."""
+def hearing_exists_in_notion(token: str, db_id: str, case_num: str, date_str: str) -> bool | None:
+    """
+    Перевіряє чи засідання вже є в Notion по справі і даті.
+    Повертає:
+      True  — запис є, не створювати
+      False — запису немає, можна створювати
+      None  — помилка перевірки, пропустити цю ітерацію
+    """
     try:
         iso_date, _ = parse_date(date_str) if date_str else (None, None)
         if not iso_date:
@@ -425,9 +431,11 @@ def hearing_exists_in_notion(token: str, db_id: str, case_num: str, date_str: st
             },
             timeout=10,
         )
+        r.raise_for_status()
         return len(r.json().get("results", [])) > 0
-    except Exception:
-        return False
+    except requests.RequestException as e:
+        log.error(f"Dedup check failed for {case_num}/{date_str}: {e}")
+        return None  # fail-closed: сигнал caller'у пропустити
 
 
 def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page_id: str | None = None, case_name: str | None = None):
@@ -861,8 +869,8 @@ def generate_ics_feed(token: str, db_id: str) -> bool:
         # Still create empty calendar so file exists
         hearings = []
 
-    now_utc = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-
+    from datetime import timezone as _tz
+    now_utc = datetime.now(_tz.utc).strftime("%Y%m%dT%H%M%SZ")
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
@@ -874,6 +882,24 @@ def generate_ics_feed(token: str, db_id: str) -> bool:
         "X-WR-TIMEZONE:Europe/Kiev",
         "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
         "X-PUBLISHED-TTL:PT1H",
+        # VTIMEZONE block — потрібен для TZID у DTSTART/DTEND
+        "BEGIN:VTIMEZONE",
+        "TZID:Europe/Kiev",
+        "BEGIN:STANDARD",
+        "DTSTART:19701025T030000",
+        "RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=10",
+        "TZOFFSETFROM:+0300",
+        "TZOFFSETTO:+0200",
+        "TZNAME:EET",
+        "END:STANDARD",
+        "BEGIN:DAYLIGHT",
+        "DTSTART:19700329T020000",
+        "RRULE:FREQ=YEARLY;BYDAY=-1SU;BYMONTH=3",
+        "TZOFFSETFROM:+0200",
+        "TZOFFSETTO:+0300",
+        "TZNAME:EEST",
+        "END:DAYLIGHT",
+        "END:VTIMEZONE",
     ]
 
     for h in hearings:
@@ -931,11 +957,11 @@ def generate_ics_feed(token: str, db_id: str) -> bool:
         lines.append("BEGIN:VEVENT")
         lines.append(f"UID:{uid}")
         lines.append(f"DTSTAMP:{now_utc}")
-
+        
         if start_dt and end_dt:
-            # Floating time (no timezone) — calendar app uses local
-            lines.append(f"DTSTART:{start_dt.strftime('%Y%m%dT%H%M%S')}")
-            lines.append(f"DTEND:{end_dt.strftime('%Y%m%dT%H%M%S')}")
+            # Kyiv timezone — івент завжди о київському часі, незалежно від пристрою
+            lines.append(f"DTSTART;TZID=Europe/Kiev:{start_dt.strftime('%Y%m%dT%H%M%S')}")
+            lines.append(f"DTEND;TZID=Europe/Kiev:{end_dt.strftime('%Y%m%dT%H%M%S')}")
         else:
             # All-day event
             lines.append(f"DTSTART;VALUE=DATE:{date_obj.strftime('%Y%m%d')}")
@@ -1154,7 +1180,9 @@ def main():
             }
 
         # Create in Notion only if missing
-        if already_in_notion:
+        if already_in_notion is None:
+            log.warning(f"  dedup check failed for {case_num} — skipping to avoid duplicate")
+        elif already_in_notion:
             log.info(f"  already in Notion: {case_num}")
         else:
             create_notion_hearing(
