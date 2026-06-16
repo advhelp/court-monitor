@@ -85,7 +85,48 @@ def send_message(chat_id, text, parse_mode="HTML"):
 
     return {"ok": False, "description": f"Failed after {MAX_RETRIES} attempts"}
 
+def get_tomorrow_date():
+    utc_now = datetime.utcnow()
+    kyiv_offset = timedelta(hours=3)
+    kyiv_now = utc_now + kyiv_offset
+    tomorrow = kyiv_now + timedelta(days=1)
+    return tomorrow.strftime("%Y-%m-%d")
 
+
+def query_tomorrow_hearings(tomorrow_str):
+    data = {
+        "filter": {
+            "property": "Дата засідання",
+            "date": {"equals": tomorrow_str}
+        },
+        "page_size": 100
+    }
+    resp = requests.post(
+        f"{NOTION_API}/databases/{HEARINGS_DB_ID}/query",
+        headers=NOTION_HEADERS,
+        json=data
+    )
+    resp.raise_for_status()
+    return resp.json().get("results", [])
+
+
+def get_page(page_id):
+    resp = requests.get(f"{NOTION_API}/pages/{page_id}", headers=NOTION_HEADERS)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_property_text(page, prop_name):
+    prop = page.get("properties", {}).get(prop_name, {})
+    prop_type = prop.get("type", "")
+    if prop_type == "title":
+        items = prop.get("title", [])
+    elif prop_type == "rich_text":
+        items = prop.get("rich_text", [])
+    else:
+        return ""
+    return "".join(item.get("plain_text", "") for item in items)
+    
 def get_property_date(page, prop_name):
     prop = page.get("properties", {}).get(prop_name, {})
     date_obj = prop.get("date", {})
