@@ -14,6 +14,7 @@ Runs daily via GitHub Actions (recommended: 18:00 Kyiv time).
 import os
 import sys
 import json
+import time
 import requests
 from datetime import datetime, timedelta
 
@@ -35,55 +36,54 @@ NOTION_HEADERS = {
 }
 
 
+# Retry settings
+MAX_RETRIES = 3
+RETRY_DELAY = 5  # seconds between retries
+
+
 def send_message(chat_id, text, parse_mode="HTML"):
+    """Send a Telegram message with retry logic."""
     data = {"chat_id": chat_id, "text": text, "parse_mode": parse_mode}
-    resp = requests.post(f"{TELEGRAM_API}/sendMessage", json=data)
-    if not resp.ok:
-        print(f"  Telegram error: {resp.text}")
-    return resp.json()
 
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = requests.post(f"{TELEGRAM_API}/sendMessage", json=data, timeout=15)
+            result = resp.json()
 
-def get_tomorrow_date():
-    utc_now = datetime.utcnow()
-    kyiv_offset = timedelta(hours=3)
-    kyiv_now = utc_now + kyiv_offset
-    tomorrow = kyiv_now + timedelta(days=1)
-    return tomorrow.strftime("%Y-%m-%d")
+            if result.get("ok"):
+                return result
 
+            error_code = result.get("error_code", 0)
+            description = result.get("description", "Unknown error")
 
-def query_tomorrow_hearings(tomorrow_str):
-    data = {
-        "filter": {
-            "property": "Дата засідання",
-            "date": {"equals": tomorrow_str}
-        },
-        "page_size": 100
-    }
-    resp = requests.post(
-        f"{NOTION_API}/databases/{HEARINGS_DB_ID}/query",
-        headers=NOTION_HEADERS,
-        json=data
-    )
-    resp.raise_for_status()
-    return resp.json().get("results", [])
+            # Rate limit — wait and retry
+            if error_code == 429:
+                retry_after = result.get("parameters", {}).get("retry_after", RETRY_DELAY)
+                print(f"  Rate limited, waiting {retry_after}s (attempt {attempt}/{MAX_RETRIES})")
+                time.sleep(retry_after)
+                continue
 
+            # Server errors (500, 502, 504) — retry
+            if error_code >= 500:
+                print(f"  Server error {error_code}, retrying in {RETRY_DELAY}s (attempt {attempt}/{MAX_RETRIES})")
+                time.sleep(RETRY_DELAY)
+                continue
 
-def get_page(page_id):
-    resp = requests.get(f"{NOTION_API}/pages/{page_id}", headers=NOTION_HEADERS)
-    resp.raise_for_status()
-    return resp.json()
+            # Client error (400, 403) — don't retry
+            print(f"  Telegram error {error_code}: {description}")
+            return result
 
+        except requests.exceptions.Timeout:
+            print(f"  Timeout, retrying in {RETRY_DELAY}s (attempt {attempt}/{MAX_RETRIES})")
+            time.sleep(RETRY_DELAY)
+            continue
 
-def get_property_text(page, prop_name):
-    prop = page.get("properties", {}).get(prop_name, {})
-    prop_type = prop.get("type", "")
-    if prop_type == "title":
-        items = prop.get("title", [])
-    elif prop_type == "rich_text":
-        items = prop.get("rich_text", [])
-    else:
-        return ""
-    return "".join(item.get("plain_text", "") for item in items)
+        except requests.exceptions.RequestException as e:
+            print(f"  Network error: {e}, retrying in {RETRY_DELAY}s (attempt {attempt}/{MAX_RETRIES})")
+            time.sleep(RETRY_DELAY)
+            continue
+
+    return {"ok": False, "description": f"Failed after {MAX_RETRIES} attempts"}
 
 
 def get_property_date(page, prop_name):
