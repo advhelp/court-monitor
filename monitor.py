@@ -765,6 +765,127 @@ def delete_archived_case_hearings(
         log.info("No hearings for archived cases to delete")
     return deleted
 
+def update_hearing_titles(token: str, db_id: str, cases_map: dict) -> int:
+    """Update hearing titles to match current case names.
+
+    If a case was renamed, the hearing title stays old.
+    This function syncs them.
+    """
+    if not token or not db_id or not cases_map:
+        return 0
+
+    # Build reverse lookup: case_number -> case_name
+    case_names = {cn: info["name"] for cn, info in cases_map.items() if info.get("name")}
+
+    updated = 0
+    has_more = True
+    start_cursor = None
+
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+    today_iso = datetime.now().strftime("%Y-%m-%d")
+
+    while has_more:
+        payload = {
+            "page_size": 100,
+            "filter": {
+                "property": "Дата засідання",
+                "date": {"on_or_after": today_iso},
+            },
+        }
+        if start_cursor:
+            payload["start_cursor"] = start_cursor
+
+        try:
+            r = requests.post(
+                f"https://api.notion.com/v1/databases/{db_id}/query",
+                headers=headers,
+                json=payload,
+                timeout=30,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except requests.RequestException as e:
+            log.error(f"Failed to query hearings for title update: {e}")
+            return updated
+
+        for page in data.get("results", []):
+            page_id = page["id"]
+            props = page.get("properties", {})
+
+            # Get current title
+            title_prop = props.get("Подія", {})
+            title_arr = title_prop.get("title", [])
+            current_title = "".join(t.get("plain_text", "") for t in title_arr).strip()
+
+            # Get case number
+            case_prop = props.get("Номер справи", {})
+            rich_text = case_prop.get("rich_text", [])
+            case_num = "".join(rt.get("plain_text", "") for rt in rich_text).strip()
+
+            if not case_num or case_num not in case_names:
+                continue
+
+            # Get date for title
+            date_prop = props.get("Дата засідання", {})
+            date_obj = date_prop.get("date", {})
+            date_str = date_obj.get("start", "") if date_obj else ""
+
+            # Build expected title
+            case_name = case_names[case_num]
+            expected_title = case_name
+            if date_str:
+                try:
+                    dt = datetime.strptime(date_str, "%Y-%m-%d")
+                    expected_title += f" — {dt.strftime('%d.%m.%Y')}"
+                except ValueError:
+                    expected_title += f" — {date_str}"
+
+            # Get time if present
+            time_prop = props.get("Час", {})
+            time_rt = time_prop.get("rich_text", [])
+            time_str = "".join(t.get("plain_text", "") for t in time_rt).strip()
+            if time_str:
+                expected_title += f" {time_str}"
+
+            if current_title == expected_title:
+                continue
+
+            # Update title
+            try:
+                ar = requests.patch(
+                    f"https://api.notion.com/v1/pages/{page_id}",
+                    headers=headers,
+                    json={
+                        "properties": {
+                            "Подія": {
+                                "title": [{"text": {"content": expected_title}}]
+                            }
+                        }
+                    },
+                    timeout=10,
+                )
+                if ar.status_code == 200:
+                    updated += 1
+                    log.info(f"  Title updated: '{current_title}' → '{expected_title}'")
+                else:
+                    log.warning(f"Failed to update title {page_id}: {ar.status_code}")
+            except requests.RequestException as e:
+                log.error(f"Error updating title {page_id}: {e}")
+
+        has_more = data.get("has_more", False)
+        start_cursor = data.get("next_cursor")
+
+    if updated:
+        log.info(f"Updated {updated} hearing titles")
+    else:
+        log.info("All hearing titles are up to date")
+    return updated
+
 
 def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
     """Query ⚖️ Засідання database for all future hearings."""
@@ -1085,6 +1206,9 @@ def main():
 
     # Clean up hearings for archived/completed cases
     delete_archived_case_hearings(notion_token, hearings_db, active_case_numbers, state)
+
+    # Sync hearing titles with current case names
+    update_hearing_titles(notion_token, hearings_db, cases_map)
 
     rows, cm = download_and_filter(case_list)
 
