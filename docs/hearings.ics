@@ -27,7 +27,7 @@ END:DAYLIGHT
 END:VTIMEZONE
 BEGIN:VEVENT
 UID:hearing-35689a7a-6cc8-813d-8a64-fd802263a974@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260624T100000
 DTEND;TZID=Europe/Kiev:20260624T110000
 SUMMARY:⚖️ Фесонюк ч. 1 ст. 286 — 932/20320/25
@@ -36,8 +36,8 @@ LOCATION:Бабушкінський районний суд м.Дніпр
 DESCRIPTION:Справа: 932/20320/25\nСуддя: Головуючий 
  суддя: Рибкін О.А.\, суддя-доповідач: Риб
  кін О.А.\nЗал: 304\nПредмет: Про відшкодува
- ння шкоди\nNotion: https://app.notion.com/p/35689a7a6cc8813d8a64
- fd802263a974
+ ння шкоди\nNotion: https://app.notion.com/p/24-06-2026-10-00-356
+ 89a7a6cc8813d8a64fd802263a974
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -53,7 +53,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-38589a7a-6cc8-8116-9332-c1a412e672fc@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260625T150000
 DTEND;TZID=Europe/Kiev:20260625T160000
 SUMMARY:⚖️ Берестов ст. 286 — 199/2348/23
@@ -65,7 +65,7 @@ DESCRIPTION:Справа: 199/2348/23\nСуддя: Головуючий
  ня правил безпеки дорожнього руху або е
  ксплуатації транспорту особами\, які ке
  рують транспортними засобами\nNotion: https://
- app.notion.com/p/286-38589a7a6cc881169332c1a412e672fc
+ app.notion.com/p/286-25-06-2026-15-00-38589a7a6cc881169332c1a412e672fc
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -81,7 +81,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-37489a7a-6cc8-81df-841c-f20eb174e7fd@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260625T133000
 DTEND;TZID=Europe/Kiev:20260625T143000
 SUMMARY:⚖️ Мазан — 206/62/26
@@ -96,7 +96,8 @@ DESCRIPTION:Справа: 206/62/26\nСуддя: Головуючий с
   комп'ютерних мережах або зберігається 
  на носіях такої інформації\, вчинені ос
  обою\, яка має право доступу до неї\nNotion: 
- https://app.notion.com/p/37489a7a6cc881df841cf20eb174e7fd
+ https://app.notion.com/p/25-06-2026-13-30-37489a7a6cc881df841cf20eb174e7
+ fd
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -112,7 +113,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-38189a7a-6cc8-812c-8c9c-e59755bca536@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260626T150000
 DTEND;TZID=Europe/Kiev:20260626T160000
 SUMMARY:⚖️ Лучка ст. 286 — 201/14051/25
@@ -125,8 +126,8 @@ DESCRIPTION:Справа: 201/14051/25\nСуддя: Головуючий
  , 13\nПредмет: Порушення правил безпеки д
  орожнього руху або експлуатації трансп
  орту особами\, які керують транспортним
- и засобами\nNotion: https://app.notion.com/p/286-38189a7a6cc881
- 2c8c9ce59755bca536
+ и засобами\nNotion: https://app.notion.com/p/286-26-06-2026-15-
+ 00-38189a7a6cc8812c8c9ce59755bca536
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -142,7 +143,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-37c89a7a-6cc8-81cb-b768-caeb617bd2d5@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260629T120000
 DTEND;TZID=Europe/Kiev:20260629T130000
 SUMMARY:⚖️ Бондаренко ст. 111-1 — 202/10407/22
@@ -150,8 +151,8 @@ DESCRIPTION:Справа: 202/10407/22\nСуддя: Головуючий
  суддя: Волошин Є.В.\, суддя-доповідач: Во
  лошин Є.В.\, суддя-учасник колегії: Мачус
  ький О.М.\, суддя-учасник колегії: Бєльче
- нко Л.А.\nNotion: https://app.notion.com/p/111-1-37c89a7a6cc881cbb7
- 68caeb617bd2d5
+ нко Л.А.\nNotion: https://app.notion.com/p/111-1-29-06-2026-12-00-3
+ 7c89a7a6cc881cbb768caeb617bd2d5
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -167,7 +168,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-37489a7a-6cc8-8141-bb2d-c8a4ce6f806d@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260708T103000
 DTEND;TZID=Europe/Kiev:20260708T113000
 SUMMARY:⚖️ Синенко ст. 194 — 203/273/22
@@ -177,8 +178,8 @@ DESCRIPTION:Справа: 203/273/22\nСуддя: Головуючий с
  уддя: Черваньова Ю.М.\, суддя-доповідач: 
  Черваньова Ю.М.\nЗал: Зал судових засіда
  нь №5\nПредмет: Умисне знищення або пошк
- одження майна\nNotion: https://app.notion.com/p/194-37489a7a
- 6cc88141bb2dc8a4ce6f806d
+ одження майна\nNotion: https://app.notion.com/p/194-08-07-20
+ 26-10-30-37489a7a6cc88141bb2dc8a4ce6f806d
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -194,7 +195,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-37b89a7a-6cc8-8145-a318-c96a8396fabb@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260715T140300
 DTEND;TZID=Europe/Kiev:20260715T150300
 SUMMARY:⚖️ Кудлюк — 171/145/23
@@ -205,8 +206,8 @@ DESCRIPTION:Справа: 171/145/23\nСуддя: Головуючий с
  Н.О.\nЗал: Зал № 33. Тел.: 0974244617\nПредмет: Пр
  ийняття пропозиції\, обіцянки або одерж
  ання неправомірної вигоди службовою ос
- обою\nNotion: https://app.notion.com/p/37b89a7a6cc88145a318c96a8396f
- abb
+ обою\nNotion: https://app.notion.com/p/15-07-2026-14-03-37b89a7a6cc8
+ 8145a318c96a8396fabb
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -222,7 +223,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-37e89a7a-6cc8-8114-ac83-fd3128172264@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260716T130000
 DTEND;TZID=Europe/Kiev:20260716T140000
 SUMMARY:⚖️ Синенко ст. 345 — 183/9077/21
@@ -232,8 +233,8 @@ DESCRIPTION:Справа: 183/9077/21\nСуддя: Головуючий
  суддя: Ковальчук Т.А.\, суддя-доповідач: 
  Ковальчук Т.А.\nПредмет: Погроза або нас
  ильство щодо працівника правоохоронно
- го органу\nNotion: https://app.notion.com/p/345-37e89a7a6cc88114
- ac83fd3128172264
+ го органу\nNotion: https://app.notion.com/p/345-16-07-2026-13-00
+ -37e89a7a6cc88114ac83fd3128172264
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -249,7 +250,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-37e89a7a-6cc8-8112-b894-ee32a811730a@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260720T110000
 DTEND;TZID=Europe/Kiev:20260720T120000
 SUMMARY:⚖️ Терещенко ст. 286 — 205/7180/26
@@ -261,7 +262,7 @@ DESCRIPTION:Справа: 205/7180/26\nСуддя: Головуючий
  ил безпеки дорожнього руху або експлуа
  тації транспорту особами\, які керують 
  транспортними засобами\nNotion: https://app.notion.
- com/p/286-37e89a7a6cc88112b894ee32a811730a
+ com/p/286-20-07-2026-11-00-37e89a7a6cc88112b894ee32a811730a
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -277,7 +278,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-36889a7a-6cc8-8114-905e-de6f2c4b42ae@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260724T090000
 DTEND;TZID=Europe/Kiev:20260724T100000
 SUMMARY:⚖️ Аліфанов ч. 2 ст. 286 — 200/19861/17
@@ -289,7 +290,8 @@ DESCRIPTION:Справа: 200/19861/17\nСуддя: Головуючий
  ушення правил безпеки дорожнього руху 
  або експлуатації транспорту особами\, я
  кі керують транспортними засобами\nNotion:
-  https://app.notion.com/p/2-286-36889a7a6cc88114905ede6f2c4b42ae
+  https://app.notion.com/p/2-286-24-07-2026-09-00-36889a7a6cc88114905ede6
+ f2c4b42ae
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -305,7 +307,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-38489a7a-6cc8-812d-99e0-c35ce68bda46@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260727T100000
 DTEND;TZID=Europe/Kiev:20260727T110000
 SUMMARY:⚖️ Устимов ст. 286 — 205/3495/26
@@ -317,7 +319,7 @@ DESCRIPTION:Справа: 205/3495/26\nСуддя: Головуючий
  ил безпеки дорожнього руху або експлуа
  тації транспорту особами\, які керують 
  транспортними засобами\nNotion: https://app.notion.
- com/p/286-38489a7a6cc8812d99e0c35ce68bda46
+ com/p/286-27-07-2026-10-00-38489a7a6cc8812d99e0c35ce68bda46
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -333,7 +335,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-36989a7a-6cc8-81be-aec7-c04e93e5ccbb@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260728T100000
 DTEND;TZID=Europe/Kiev:20260728T110000
 SUMMARY:⚖️ Синенко ст. 263 — 179/1344/21
@@ -344,7 +346,8 @@ DESCRIPTION:Справа: 179/1344/21\nСуддя: Головуючий
  ч: Ігольнікова М.О.\nЗал: 4\nПредмет: Незак
  онне поводження зі зброєю\, бойовими пр
  ипасами або вибуховими речовинами\nNotion:
-  https://app.notion.com/p/263-36989a7a6cc881beaec7c04e93e5ccbb
+  https://app.notion.com/p/263-28-07-2026-10-00-36989a7a6cc881beaec7c04e9
+ 3e5ccbb
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -360,7 +363,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-37f89a7a-6cc8-81fb-a69f-f9764f27f677@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260811T120000
 DTEND;TZID=Europe/Kiev:20260811T130000
 SUMMARY:⚖️ Кадиров — 203/3244/24
@@ -370,7 +373,7 @@ DESCRIPTION:Справа: 203/3244/24\nСуддя: Головуючий
  суддя: Смольняков О.О.\, суддя-доповідач:
   Смольняков О.О.\nЗал: зал судових засіда
  нь №1\nПредмет: Грабіж\nNotion: https://app.notion.com/
- p/37f89a7a6cc881fba69ff9764f27f677
+ p/11-08-2026-12-00-37f89a7a6cc881fba69ff9764f27f677
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -386,7 +389,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-35b89a7a-6cc8-817e-81d0-ed3711945ba8@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260901T103000
 DTEND;TZID=Europe/Kiev:20260901T113000
 SUMMARY:⚖️ Арестова ст. 190 — 188/488/22
@@ -395,7 +398,8 @@ LOCATION:Петропавлівський районний суд Дні
 DESCRIPTION:Справа: 188/488/22\nСуддя: Головуючий с
  уддя: Місюра К.В.\, суддя-доповідач: Місю
  ра К.В.\nПредмет: ст. 190 ч 1 КК україни\nNotion:
-  https://app.notion.com/p/190-35b89a7a6cc8817e81d0ed3711945ba8
+  https://app.notion.com/p/190-01-09-2026-10-30-35b89a7a6cc8817e81d0ed371
+ 1945ba8
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
@@ -411,7 +415,7 @@ END:VALARM
 END:VEVENT
 BEGIN:VEVENT
 UID:hearing-35989a7a-6cc8-8163-bb56-dcb4796f123e@court-monitor.advhelp
-DTSTAMP:20260623T092613Z
+DTSTAMP:20260623T095830Z
 DTSTART;TZID=Europe/Kiev:20260916T101000
 DTEND;TZID=Europe/Kiev:20260916T111000
 SUMMARY:⚖️ Пантюхов 3% годорвых — 201/8119/25
@@ -425,8 +429,8 @@ DESCRIPTION:Справа: 201/8119/25\nСуддя: Головуючий
  нями\, діями чи бездіяльністю органу де
  ржавної влади та стягнення 3% річних та 
  інфляційних втрат за прострочення вико
- нання зобов`язання\nNotion: https://app.notion.com/p/3-3
- 5989a7a6cc88163bb56dcb4796f123e
+ нання зобов`язання\nNotion: https://app.notion.com/p/3-1
+ 6-09-2026-10-10-35989a7a6cc88163bb56dcb4796f123e
 STATUS:CONFIRMED
 TRANSP:OPAQUE
 BEGIN:VALARM
