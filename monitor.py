@@ -459,6 +459,17 @@ def create_notion_hearing(token: str, db_id: str, row: dict, cm: dict, case_page
     display_name = case_name if case_name else f"Засідання {case_num}"
     title = display_name
 
+    # Add date and time to title (same format as update_hearing_titles)
+    iso_date_for_title, _ = parse_date(date_str) if date_str else (None, None)
+    if iso_date_for_title:
+        try:
+            dt = datetime.strptime(iso_date_for_title, "%Y-%m-%d")
+            title += f" — {dt.strftime('%d.%m.%Y')}"
+        except ValueError:
+            pass
+    if time_str:
+        title += f" {time_str}"
+
     # Properties matching ⚖️ Засідання schema
     props = {
         "Подія": {
