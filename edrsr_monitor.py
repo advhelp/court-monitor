@@ -273,6 +273,50 @@ def decision_uid(decision: dict) -> str:
     return f"edrsr_{hashlib.md5(key.encode()).hexdigest()}"
 
 
+# ─── Notion request helper (retry only on transient errors) ───────
+
+NOTION_RETRY_STATUSES = {429, 500, 502, 503, 504}
+NOTION_CONFIG_STATUSES = {400, 401, 403, 404}
+NOTION_RETRY_DELAYS = [5, 15, 45]  # seconds; 4 attempts total
+LAST_NOTION_ERROR = ""  # human-readable reason of the last final failure
+
+
+def notion_post(url: str, headers: dict, payload: dict, timeout: int = 30):
+    """POST to Notion with retries for transient failures (429/5xx/timeout/connection).
+
+    400/401/403/404 are NOT retried: they mean token, access or field names are wrong.
+    On final failure raises requests.RequestException (callers already handle it)
+    and stores the reason in LAST_NOTION_ERROR.
+    """
+    global LAST_NOTION_ERROR
+    last_exc = None
+    for attempt in range(len(NOTION_RETRY_DELAYS) + 1):
+        try:
+            r = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            if r.status_code in NOTION_RETRY_STATUSES:
+                LAST_NOTION_ERROR = f"HTTP {r.status_code}"
+                last_exc = requests.HTTPError(f"{r.status_code} from Notion", response=r)
+                delay = NOTION_RETRY_DELAYS[attempt] if attempt < len(NOTION_RETRY_DELAYS) else None
+                ra = r.headers.get("Retry-After")
+                if delay is not None and ra and ra.isdigit():
+                    delay = min(max(delay, int(ra)), 60)
+            else:
+                if r.status_code >= 400:
+                    LAST_NOTION_ERROR = f"HTTP {r.status_code}"
+                r.raise_for_status()  # 4xx -> raises, not retried
+                return r
+        except (requests.ConnectionError, requests.Timeout) as e:
+            LAST_NOTION_ERROR = type(e).__name__
+            last_exc = e
+            delay = NOTION_RETRY_DELAYS[attempt] if attempt < len(NOTION_RETRY_DELAYS) else None
+        if delay is None:
+            break
+        log.warning(f"Notion transient error ({LAST_NOTION_ERROR}), retry in {delay}s "
+                    f"(attempt {attempt + 1}/{len(NOTION_RETRY_DELAYS) + 1})")
+        time.sleep(delay)
+    raise last_exc
+
+
 # ─── Notion: Fetch cases ─────────────────────────────────────────
 
 def fetch_cases_from_notion(token: str) -> dict[str, dict] | None:
@@ -311,12 +355,12 @@ def fetch_cases_from_notion(token: str) -> dict[str, dict] | None:
             payload["start_cursor"] = start_cursor
 
         try:
-            r = requests.post(url, headers=headers, json=payload, timeout=30)
-            if not r.ok:
-                log.error(f"Notion API {r.status_code}: {r.text[:500]}")
-            r.raise_for_status()
+            r = notion_post(url, headers, payload, timeout=30)
             data = r.json()
         except requests.RequestException as e:
+            resp = getattr(e, "response", None)
+            if resp is not None:
+                log.error(f"Notion API {resp.status_code}: {resp.text[:500]}")
             log.error(f"Failed to query Кейси АБ: {e}")
             return None
 
@@ -610,8 +654,15 @@ def main():
         log.error("Notion API failed — aborting run to avoid partial work")
         send_telegram(
             tg_token, tg_chat,
-            "🚨 <b>ЄДРСР Monitor:</b> Notion API недоступний. "
-            "Запуск зупинено. Перевір токен і назви полів."
+            "🚨 <b>ЄДРСР Monitor:</b> Notion API недоступний "
+            f"(<code>{LAST_NOTION_ERROR or 'unknown'}</code>). "
+            "Запуск зупинено. "
+            + (
+                "Схоже на помилку конфігурації: перевір токен, доступ інтеграції "
+                "до бази «Кейси АБ» і назви полів."
+                if LAST_NOTION_ERROR[-3:].isdigit() and int(LAST_NOTION_ERROR[-3:]) in NOTION_CONFIG_STATUSES
+                else "Схоже на тимчасовий збій Notion (спроби вичерпано); наступний запуск за розкладом."
+            )
         )
         sys.exit(1)
 
