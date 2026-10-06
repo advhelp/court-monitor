@@ -155,7 +155,7 @@ def hearing_id(row: dict, cm: dict) -> str:
 
 # ─── CSV Download & Parse ────────────────────────────────────────
 
-def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
+def _download_and_filter_once(case_numbers: list[str]) -> tuple[list[dict], dict]:
     case_set = set(cn.strip() for cn in case_numbers)
     log.info(f"Monitoring {len(case_set)} cases")
 
@@ -170,7 +170,7 @@ def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
             continue
     else:
         log.error("All CSV sources failed!")
-        return [], {}
+        raise requests.exceptions.ConnectionError("усі джерела CSV недоступні")
 
     # Detect encoding
     enc = "utf-8"
@@ -255,6 +255,35 @@ def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
 
     log.info(f"Done: {total:,} rows, {len(matches)} matches, {skipped_past} past skipped")
     return matches, cm
+
+
+CSV_RETRY_DELAYS = [30, 90]  # seconds before re-download; 3 attempts total
+
+
+class CSVDownloadError(Exception):
+    """CSV ДСА could not be downloaded completely after all retries."""
+
+
+def download_and_filter(case_numbers: list[str]) -> tuple[list[dict], dict]:
+    """Download CSV with full restart on mid-stream breaks (IncompleteRead etc.).
+
+    A broken stream cannot be resumed: the file is downloaded again from the start
+    and matches are collected anew, so a partial file never reaches Notion.
+    """
+    attempts = len(CSV_RETRY_DELAYS) + 1
+    for attempt in range(1, attempts + 1):
+        try:
+            return _download_and_filter_once(case_numbers)
+        except (requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout) as e:
+            reason = f"{type(e).__name__}: {str(e)[:200]}"
+            if attempt == attempts:
+                raise CSVDownloadError(f"{attempts} спроби, остання: {reason}") from e
+            delay = CSV_RETRY_DELAYS[attempt - 1]
+            log.warning(f"CSV stream broken ({reason}); full re-download in {delay}s "
+                        f"(attempt {attempt}/{attempts})")
+            time.sleep(delay)
 
 
 # ─── Telegram ────────────────────────────────────────────────────
@@ -1651,7 +1680,22 @@ def main():
     # Sync hearing titles with current case names
     update_hearing_titles(notion_token, hearings_db, cases_map)
 
-    rows, cm = download_and_filter(case_list)
+    try:
+        rows, cm = download_and_filter(case_list)
+    except CSVDownloadError as e:
+        log.error(f"CSV ДСА download failed: {e}")
+        send_telegram(
+            config.get("telegram_bot_token", ""),
+            config.get("telegram_chat_id", ""),
+            "⚠️ <b>Court Monitor:</b> CSV ДСА не завантажився повністю "
+            f"(<code>{html.escape(str(e)[:300])}</code>). "
+            "Нові засідання в цьому запуску не перевірено; таски й календар оновлено. "
+            "Наступна спроба за розкладом.",
+        )
+        sync_hearing_tasks_safe(config, notion_token, hearings_db, cases_map)
+        generate_ics_feed(notion_token, hearings_db)
+        save_state(state)
+        return
 
     if not cm:
         send_telegram(
