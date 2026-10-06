@@ -1,6 +1,7 @@
 """
-Court Hearing Monitor v10 — Моніторинг судових засідань
+Court Hearing Monitor v11 — Моніторинг судових засідань
 CSV ДСА → фільтрація → Notion (⚖️ Засідання) + Telegram
++ ✅ Tasks: одна таска на кожне засідання, прив'язана до кейсу (без дублів)
 """
 
 import csv
@@ -8,6 +9,7 @@ import json
 import os
 import sys
 import hashlib
+import html
 import logging
 from datetime import datetime, timedelta
 from io import StringIO
@@ -36,6 +38,22 @@ NOTION_HEARINGS_DB = "1cb005324ce44910b3a31d7599ba7505"
 # Кейси АБ database + data source IDs
 NOTION_CASES_DB = "272cfd318d33495494243620503615e7"
 NOTION_CASES_DS = "5a8d544a-1fef-432e-b086-06ece834653d"
+
+# ✅ Tasks database — DATABASE id (the one in the page URL),
+# NOT the collection:// data-source id that Notion MCP shows.
+NOTION_TASKS_DB = "2b689a7a6cc8807bb0e6dba126ae9741"
+
+# Field names in ✅ Tasks (the script checks them against the live schema on every run)
+TASK_TITLE_PROP = "Task"          # title
+TASK_CASE_PROP = "Кейс АБ"        # relation → Кейси АБ
+TASK_DEADLINE_PROP = "Дедлайн"    # date (Tasks views sort by it)
+TASK_KEY_PROP = "Hearing ID"      # text; hidden technical dedup key, auto-created on first run
+# Optional select fields: (field, option). Filled only if that exact option exists.
+TASK_OPTIONAL_SELECTS = [
+    ("Тип дії", "🏛️ засідання"),
+    ("Сфера", "адвокатура"),
+]
+TASK_CREATE_DELAY = 0.4           # seconds between creates (Notion limit ≈ 3 req/s)
 
 # Column name candidates (CSV format may vary)
 CASE_NUMBER_COLS = [
@@ -287,17 +305,24 @@ LAST_NOTION_ERROR = ""  # human-readable reason of the last final failure
 
 
 def notion_post(url: str, headers: dict, payload: dict, timeout: int = 30):
-    """POST to Notion with retries for transient failures (429/5xx/timeout/connection).
+    """POST to Notion with retries — see notion_request()."""
+    return notion_request("POST", url, headers, payload, timeout)
+
+
+def notion_request(method: str, url: str, headers: dict, payload: dict | None = None, timeout: int = 30):
+    """Call Notion with retries for transient failures (429/5xx/timeout/connection).
 
     400/401/403/404 are NOT retried: they mean token, access or field names are wrong.
     On final failure raises requests.RequestException (callers already handle it)
     and stores the reason in LAST_NOTION_ERROR.
+    Only for idempotent calls (queries, schema read/patch) — never for creating pages:
+    a retry after a lost response could create a duplicate.
     """
     global LAST_NOTION_ERROR
     last_exc = None
     for attempt in range(len(NOTION_RETRY_DELAYS) + 1):
         try:
-            r = requests.post(url, headers=headers, json=payload, timeout=timeout)
+            r = requests.request(method, url, headers=headers, json=payload, timeout=timeout)
             if r.status_code in NOTION_RETRY_STATUSES:
                 LAST_NOTION_ERROR = f"HTTP {r.status_code}"
                 last_exc = requests.HTTPError(f"{r.status_code} from Notion", response=r)
@@ -1029,6 +1054,7 @@ def fetch_future_hearings_from_notion(token: str, db_id: str) -> list[dict]:
                 "subject": get_text("Предмет"),
                 "status": get_select("Статус"),
                 "url": page.get("url", ""),
+                "case_ids": case_ids,
             })
 
         has_more = data.get("has_more", False)
@@ -1222,11 +1248,351 @@ def notify_calendar_url_once(config: dict, state: dict) -> bool:
     return True
 
 
+# ─── Notion: ✅ Tasks (one task per hearing, linked to the case) ──────────────
+#
+# Why a separate pass instead of hooking into create_notion_hearing():
+#   • it back-fills hearings that are already in Notion (a hook would only see NEW ones);
+#   • it heals a run where the task create failed (next run simply finds no key → creates);
+#   • it also covers hearings added by hand in ⚖️ Засідання.
+#
+# No duplicates: every task gets a hidden key «Hearing ID» = "<case number>|<YYYY-MM-DD>"
+# (the same rule that dedups hearings: one hearing per case per date). Before creating,
+# ALL existing keys are read from Notion in one paged query — Notion is the source of truth,
+# the state file is not involved. Task creation is a single attempt (never auto-retried on a
+# lost response, which is how duplicates are born); 429 is the one safe exception.
+
+def _notion_headers(token: str) -> dict:
+    return {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28",
+    }
+
+
+def _notion_error_text(e: Exception) -> str:
+    """Short reason of a failed Notion call: HTTP status + Notion's own message."""
+    resp = getattr(e, "response", None)
+    if resp is not None:
+        try:
+            msg = (resp.json() or {}).get("message", "")
+        except ValueError:
+            msg = ""
+        return (f"HTTP {resp.status_code}: {msg}" if msg else f"HTTP {resp.status_code}")[:300]
+    return f"{type(e).__name__}: {e}"[:300]
+
+
+def _select_options(props: dict, name: str) -> set[str]:
+    p = props.get(name, {})
+    if p.get("type") != "select":
+        return set()
+    return {o.get("name", "") for o in p.get("select", {}).get("options", [])}
+
+
+def task_key(case_num: str, iso_date: str) -> str:
+    """Stable dedup key: one task per case per hearing date."""
+    return f"{case_num.strip()}|{iso_date}"
+
+
+def ensure_tasks_schema(token: str) -> tuple[dict | None, str]:
+    """Read the ✅ Tasks schema and make sure we can safely write to it.
+
+    - verifies that the fields we fill still exist with the expected type
+      (renamed/removed field → stop, never create half-filled tasks);
+    - adds the hidden technical text field «Hearing ID» if it is missing.
+
+    Returns (properties, "") or (None, reason). On (None, ...) the caller must NOT create tasks.
+    """
+    url = f"https://api.notion.com/v1/databases/{NOTION_TASKS_DB}"
+    headers = _notion_headers(token)
+    try:
+        props = notion_request("GET", url, headers).json().get("properties", {})
+    except requests.RequestException as e:
+        return None, (
+            f"не вдалося прочитати базу Tasks ({_notion_error_text(e)}). "
+            "Перевір, що інтеграцію підключено до бази Tasks (⋯ → Connections)"
+        )
+
+    expected = [
+        (TASK_TITLE_PROP, "title"),
+        (TASK_CASE_PROP, "relation"),
+        (TASK_DEADLINE_PROP, "date"),
+    ]
+    bad = [
+        f"«{name}» (потрібен {want}, є {props.get(name, {}).get('type', 'немає')})"
+        for name, want in expected
+        if props.get(name, {}).get("type") != want
+    ]
+    if bad:
+        return None, "у Tasks змінились поля: " + ", ".join(bad)
+
+    key_type = props.get(TASK_KEY_PROP, {}).get("type")
+    if key_type is None:
+        try:
+            r = notion_request(
+                "PATCH", url, headers,
+                {"properties": {TASK_KEY_PROP: {"rich_text": {}}}},
+            )
+            props = r.json().get("properties", props)
+            log.info(f"Tasks: added hidden field «{TASK_KEY_PROP}»")
+        except requests.RequestException as e:
+            return None, (
+                f"не вдалося додати службове поле «{TASK_KEY_PROP}» ({_notion_error_text(e)}). "
+                "Додай його вручну в Tasks: тип Text"
+            )
+    elif key_type != "rich_text":
+        return None, f"поле «{TASK_KEY_PROP}» має тип {key_type}, а потрібен Text"
+
+    return props, ""
+
+
+def fetch_existing_task_keys(token: str) -> set[str] | None:
+    """All dedup keys already present in ✅ Tasks.
+
+    Returns None if they cannot be read completely — the caller must then create nothing
+    (fail-closed: a partial list would produce duplicates).
+    """
+    url = f"https://api.notion.com/v1/databases/{NOTION_TASKS_DB}/query"
+    headers = _notion_headers(token)
+    keys: set[str] = set()
+    start_cursor = None
+
+    while True:
+        payload = {
+            "page_size": 100,
+            "filter": {"property": TASK_KEY_PROP, "rich_text": {"is_not_empty": True}},
+        }
+        if start_cursor:
+            payload["start_cursor"] = start_cursor
+        try:
+            data = notion_post(url, headers, payload, timeout=30).json()
+        except requests.RequestException as e:
+            log.error(f"Tasks: failed to read existing tasks: {_notion_error_text(e)}")
+            return None
+
+        for page in data.get("results", []):
+            rt = page.get("properties", {}).get(TASK_KEY_PROP, {}).get("rich_text", [])
+            key = "".join(t.get("plain_text", "") for t in rt).strip()
+            if key:
+                keys.add(key)
+
+        if not data.get("has_more"):
+            return keys
+        start_cursor = data.get("next_cursor")
+        if not start_cursor:
+            log.error("Tasks: Notion says has_more but gave no cursor — list incomplete")
+            return None
+
+
+def build_task_title(case_name: str, iso_date: str, time_str: str) -> str:
+    day = datetime.strptime(iso_date, "%Y-%m-%d").strftime("%d.%m.%Y")
+    title = f"🏛️ Засідання — {case_name} — {day}"
+    if time_str:
+        title += f" {time_str}"
+    return title
+
+
+def build_task_page(
+    case_page_id: str,
+    title: str,
+    iso_date: str,
+    key: str,
+    selects: list[tuple[str, str]],
+    details: list[str],
+    hearing_url: str,
+) -> dict:
+    """Body for POST /v1/pages. «Status» is deliberately NOT set — Notion applies the
+    database default («в плані»); «видно клієнту» stays unchecked."""
+    props = {
+        TASK_TITLE_PROP: {"title": [{"text": {"content": title[:2000]}}]},
+        TASK_CASE_PROP: {"relation": [{"id": case_page_id}]},
+        TASK_DEADLINE_PROP: {"date": {"start": iso_date}},
+        TASK_KEY_PROP: {"rich_text": [{"text": {"content": key[:2000]}}]},
+    }
+    for prop, val in selects:
+        props[prop] = {"select": {"name": val}}
+
+    children = []
+    if details:
+        children.append({
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {"rich_text": [
+                {"type": "text", "text": {"content": "\n".join(details)[:1900]}}
+            ]},
+        })
+    if hearing_url:
+        children.append({
+            "object": "block",
+            "type": "paragraph",
+            "paragraph": {"rich_text": [
+                {"type": "text", "text": {"content": "Засідання в Notion", "link": {"url": hearing_url}}}
+            ]},
+        })
+
+    body = {"parent": {"database_id": NOTION_TASKS_DB}, "properties": props}
+    if children:
+        body["children"] = children
+    return body
+
+
+def create_notion_task(token: str, body: dict) -> tuple[bool, str]:
+    """Create one task. Single attempt — a retry after a lost response could duplicate it
+    (the next run's key check settles whether it was created). Only 429 is retried once:
+    Notion did not process a rate-limited request, so repeating it is safe."""
+    for attempt in range(2):
+        try:
+            r = requests.post(
+                "https://api.notion.com/v1/pages",
+                headers=_notion_headers(token),
+                json=body,
+                timeout=30,
+            )
+        except requests.RequestException as e:
+            return False, type(e).__name__
+        if r.status_code == 200:
+            return True, ""
+        if r.status_code == 429 and attempt == 0:
+            ra = r.headers.get("Retry-After", "")
+            time.sleep(min(int(ra), 60) if ra.isdigit() else 5)
+            continue
+        try:
+            msg = (r.json() or {}).get("message", "")
+        except ValueError:
+            msg = ""
+        return False, (f"HTTP {r.status_code}: {msg}" if msg else f"HTTP {r.status_code}")[:300]
+    return False, "HTTP 429"
+
+
+def sync_hearing_tasks(token: str, hearings_db: str, cases_map: dict) -> dict:
+    """Ensure every upcoming PLANNED hearing of an ACTIVE case has exactly one task in
+    ✅ Tasks, linked to the case via «Кейс АБ». Returns counters + «error» ("" = ok)."""
+    res = {"created": 0, "existing": 0, "skipped": 0, "failed": 0, "error": ""}
+    if not token or not NOTION_TASKS_DB:
+        return res
+
+    props, err = ensure_tasks_schema(token)
+    if props is None:
+        res["error"] = err
+        return res
+
+    existing = fetch_existing_task_keys(token)
+    if existing is None:
+        res["error"] = "не вдалося прочитати наявні таски — нові не створюю, щоб не було дублів"
+        return res
+
+    # Optional selects are filled only if the exact option exists (otherwise Notion would
+    # silently create a look-alike option).
+    selects = []
+    for prop, val in TASK_OPTIONAL_SELECTS:
+        if val in _select_options(props, prop):
+            selects.append((prop, val))
+        else:
+            log.warning(f"Tasks: у полі «{prop}» немає опції «{val}» — поле не заповнюю")
+
+    by_page = {info["page_id"].replace("-", ""): (num, info) for num, info in cases_map.items()}
+    hearings = fetch_future_hearings_from_notion(token, hearings_db)
+    seen: set[str] = set()
+    first_error = ""
+
+    for h in hearings:
+        # Only planned hearings; an empty status (hearing added by hand) counts as planned.
+        status = (h.get("status") or "").strip().lower()
+        if status and status != "заплановано":      # відбулось / перенесено / скасовано
+            res["skipped"] += 1
+            continue
+
+        iso_date = (h.get("date") or "")[:10]
+        try:
+            datetime.strptime(iso_date, "%Y-%m-%d")
+        except ValueError:
+            res["skipped"] += 1
+            continue
+
+        # Active case: by case number first, then by the hearing's «Кейс» relation.
+        num = (h.get("case") or "").strip()
+        info = cases_map.get(num)
+        if info is None:
+            for cid in h.get("case_ids", []):
+                if cid in by_page:
+                    num, info = by_page[cid]
+                    break
+        if info is None:
+            log.info(f"  Tasks: no active case for «{h.get('title', '')}» — skipped")
+            res["skipped"] += 1
+            continue
+
+        key = task_key(num, iso_date)
+        if key in existing:
+            res["existing"] += 1
+            continue
+        if key in seen:        # a failed attempt earlier in this run: do not try twice
+            res["skipped"] += 1
+            continue
+        seen.add(key)
+
+        details = [f"Справа: {num}"]
+        for label, val in (
+            ("Час", h.get("time")),
+            ("Суд", h.get("court")),
+            ("Суддя", h.get("judge")),
+            ("Зал", h.get("hall")),
+            ("Предмет", (h.get("subject") or "")[:500]),
+        ):
+            if val:
+                details.append(f"{label}: {val}")
+
+        body = build_task_page(
+            case_page_id=info["page_id"],
+            title=build_task_title(info["name"], iso_date, h.get("time") or ""),
+            iso_date=iso_date,
+            key=key,
+            selects=selects,
+            details=details,
+            hearing_url=h.get("url", ""),
+        )
+        ok, why = create_notion_task(token, body)
+        if ok:
+            res["created"] += 1
+            existing.add(key)
+            log.info(f"  Task created: {num} / {iso_date}")
+        else:
+            res["failed"] += 1
+            first_error = first_error or why
+            log.warning(f"  Task NOT created for {num} / {iso_date}: {why}")
+            if res["failed"] >= 3 and res["created"] == 0:
+                log.error("Tasks: 3 failures in a row with no success — stopping this run")
+                break
+        time.sleep(TASK_CREATE_DELAY)
+
+    if res["failed"]:
+        res["error"] = f"не створено {res['failed']} тасків ({first_error}); повторю наступного запуску"
+    log.info(
+        f"Tasks: created {res['created']}, already existed {res['existing']}, "
+        f"skipped {res['skipped']}, failed {res['failed']}"
+    )
+    return res
+
+
+def sync_hearing_tasks_safe(config: dict, token: str, hearings_db: str, cases_map: dict) -> None:
+    """Run the task sync and never raise: a Tasks problem must not break hearings, ICS or Telegram."""
+    try:
+        res = sync_hearing_tasks(token, hearings_db, cases_map)
+    except Exception as e:  # noqa: BLE001 — isolation is the whole point
+        log.exception("Tasks sync crashed")
+        res = {"error": f"{type(e).__name__}: {e}"}
+    if res.get("error"):
+        send_telegram(
+            config.get("telegram_bot_token", ""),
+            config.get("telegram_chat_id", ""),
+            "⚠️ <b>Court Monitor:</b> таски по засіданнях — " + html.escape(res["error"]),
+        )
+
+
 # ─── Main ────────────────────────────────────────────────────────
 
 def main():
     log.info("=" * 50)
-    log.info("Court Hearing Monitor v10 (cleanup archived cases)")
+    log.info("Court Hearing Monitor v11 (cleanup archived cases + tasks per hearing)")
     log.info("=" * 50)
 
     config = load_config()
@@ -1286,6 +1652,8 @@ def main():
 
     if not rows:
         log.info("No hearings found in CSV")
+        # Tasks: back-fill / self-heal even when the CSV has nothing new
+        sync_hearing_tasks_safe(config, notion_token, hearings_db, cases_map)
         # Still regenerate ICS in case Notion has manually added hearings
         log.info("Generating ICS calendar feed...")
         generate_ics_feed(
@@ -1318,6 +1686,8 @@ def main():
 
     if not rows:
         log.info("No future hearings found")
+        # Tasks: back-fill / self-heal even when the CSV has nothing new
+        sync_hearing_tasks_safe(config, notion_token, hearings_db, cases_map)
         # Still regenerate ICS in case Notion has manually added hearings
         log.info("Generating ICS calendar feed...")
         generate_ics_feed(
@@ -1383,6 +1753,9 @@ def main():
             created_count += 1
 
     log.info(f"Created in Notion: {created_count}, Telegram notifications sent: {notified_count}")
+
+    # One task per upcoming hearing in ✅ Tasks (linked to the case, no duplicates)
+    sync_hearing_tasks_safe(config, notion_token, hearings_db, cases_map)
 
     # Clean old entries (90 days)
     cutoff = (datetime.now() - timedelta(days=90)).isoformat()
