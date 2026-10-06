@@ -47,6 +47,10 @@ NOTION_TASKS_DB = "2b689a7a6cc8807bb0e6dba126ae9741"
 TASK_TITLE_PROP = "Task"          # title
 TASK_CASE_PROP = "Кейс АБ"        # relation → Кейси АБ
 TASK_DEADLINE_PROP = "Дедлайн"    # date (Tasks views sort by it)
+TASK_STATUS_PROP = "Status"       # status
+# Pages created through the API do NOT get the «New page» template of the database; without
+# an explicit value Notion would use the field's own default (the inbox-like status).
+TASK_STATUS_NEW = "в роботі"      # same value as the database's «New page» template
 TASK_KEY_PROP = "Hearing ID"      # text; hidden technical dedup key, auto-created on first run
 # Optional select fields: (field, option). Filled only if that exact option exists.
 TASK_OPTIONAL_SELECTS = [
@@ -1316,6 +1320,7 @@ def ensure_tasks_schema(token: str) -> tuple[dict | None, str]:
         (TASK_TITLE_PROP, "title"),
         (TASK_CASE_PROP, "relation"),
         (TASK_DEADLINE_PROP, "date"),
+        (TASK_STATUS_PROP, "status"),
     ]
     bad = [
         f"«{name}» (потрібен {want}, є {props.get(name, {}).get('type', 'немає')})"
@@ -1324,6 +1329,12 @@ def ensure_tasks_schema(token: str) -> tuple[dict | None, str]:
     ]
     if bad:
         return None, "у Tasks змінились поля: " + ", ".join(bad)
+
+    status_options = {
+        o.get("name", "") for o in props.get(TASK_STATUS_PROP, {}).get("status", {}).get("options", [])
+    }
+    if TASK_STATUS_NEW not in status_options:
+        return None, f"у полі «{TASK_STATUS_PROP}» немає опції «{TASK_STATUS_NEW}»"
 
     key_type = props.get(TASK_KEY_PROP, {}).get("type")
     if key_type is None:
@@ -1400,12 +1411,13 @@ def build_task_page(
     details: list[str],
     hearing_url: str,
 ) -> dict:
-    """Body for POST /v1/pages. «Status» is deliberately NOT set — Notion applies the
-    database default («в плані»); «видно клієнту» stays unchecked."""
+    """Body for POST /v1/pages. «Status» is set explicitly (API-created pages do not get the
+    database template, see TASK_STATUS_NEW); «видно клієнту» stays unchecked."""
     props = {
         TASK_TITLE_PROP: {"title": [{"text": {"content": title[:2000]}}]},
         TASK_CASE_PROP: {"relation": [{"id": case_page_id}]},
         TASK_DEADLINE_PROP: {"date": {"start": iso_date}},
+        TASK_STATUS_PROP: {"status": {"name": TASK_STATUS_NEW}},
         TASK_KEY_PROP: {"rich_text": [{"text": {"content": key[:2000]}}]},
     }
     for prop, val in selects:
