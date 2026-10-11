@@ -57,6 +57,9 @@ TASK_OPTIONAL_SELECTS = [
     ("Тип дії", "🏛️ засідання"),
     ("Сфера", "адвокатура"),
 ]
+# Hearings are shown to the client: «Сторінка клієнта» lists only tasks with this box ticked.
+# Optional: if the field is missing or is not a checkbox, it is left alone (warning in the log).
+TASK_CLIENT_VISIBLE_PROP = "видно клієнту"
 TASK_CREATE_DELAY = 0.4           # seconds between creates (Notion limit ≈ 3 req/s)
 
 # Column name candidates (CSV format may vary)
@@ -1439,9 +1442,11 @@ def build_task_page(
     selects: list[tuple[str, str]],
     details: list[str],
     hearing_url: str,
+    client_visible: bool = False,
 ) -> dict:
     """Body for POST /v1/pages. «Status» is set explicitly (API-created pages do not get the
-    database template, see TASK_STATUS_NEW); «видно клієнту» stays unchecked."""
+    database template, see TASK_STATUS_NEW). With client_visible=True the task also gets
+    «видно клієнту» = ✓, so the hearing appears on «Сторінка клієнта»."""
     props = {
         TASK_TITLE_PROP: {"title": [{"text": {"content": title[:2000]}}]},
         TASK_CASE_PROP: {"relation": [{"id": case_page_id}]},
@@ -1451,6 +1456,8 @@ def build_task_page(
     }
     for prop, val in selects:
         props[prop] = {"select": {"name": val}}
+    if client_visible:
+        props[TASK_CLIENT_VISIBLE_PROP] = {"checkbox": True}
 
     children = []
     if details:
@@ -1530,6 +1537,12 @@ def sync_hearing_tasks(token: str, hearings_db: str, cases_map: dict) -> dict:
         else:
             log.warning(f"Tasks: у полі «{prop}» немає опції «{val}» — поле не заповнюю")
 
+    client_visible = props.get(TASK_CLIENT_VISIBLE_PROP, {}).get("type") == "checkbox"
+    if not client_visible:
+        log.warning(
+            f"Tasks: немає поля-галочки «{TASK_CLIENT_VISIBLE_PROP}» — засідання не будуть видні клієнту"
+        )
+
     by_page = {info["page_id"].replace("-", ""): (num, info) for num, info in cases_map.items()}
     hearings = fetch_future_hearings_from_notion(token, hearings_db)
     seen: set[str] = set()
@@ -1590,6 +1603,7 @@ def sync_hearing_tasks(token: str, hearings_db: str, cases_map: dict) -> dict:
             selects=selects,
             details=details,
             hearing_url=h.get("url", ""),
+            client_visible=client_visible,
         )
         ok, why = create_notion_task(token, body)
         if ok:
