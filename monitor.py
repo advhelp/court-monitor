@@ -1,7 +1,7 @@
 """
-Court Hearing Monitor v11 — Моніторинг судових засідань
+Court Hearing Monitor v12 — Моніторинг судових засідань
 CSV ДСА → фільтрація → Notion (⚖️ Засідання) + Telegram
-+ ✅ Tasks: одна таска на кожне засідання, прив'язана до кейсу (без дублів)
++ ✅ Tasks: одна таска на кожне засідання, прив'язана до кейсу (без дублів), з іконкою за замовчуванням
 """
 
 import csv
@@ -61,6 +61,18 @@ TASK_OPTIONAL_SELECTS = [
 # Optional: if the field is missing or is not a checkbox, it is left alone (warning in the log).
 TASK_CLIENT_VISIBLE_PROP = "видно клієнту"
 TASK_CREATE_DELAY = 0.4           # seconds between creates (Notion limit ≈ 3 req/s)
+# Default icon of a hearing task: the blue circle that the «New page» template of ✅ Tasks gives
+# to tasks made by hand. Pages created through the API do not get the template, so the icon is
+# set by a SEPARATE call right after the create — an icon problem can never break the create.
+TASK_ICON_NAME = "circle"
+TASK_ICON_COLOR = "blue"
+# Notion's native-icon format ({"type": "icon"}) needs a newer Notion-Version than the rest of
+# the script (which stays pinned to 2022-06-28). Used for this one call only.
+TASK_ICON_API_VERSION = "2026-03-11"
+# The same blue circle as an external URL — accepted by the pinned version; used if Notion
+# answers 400 to the native format.
+TASK_ICON_FALLBACK_URL = "https://www.notion.so/icons/circle_blue.svg"
+TASK_ICON_BACKFILL_MAX = 100      # tasks without an icon fixed per run (the rest on the next run)
 
 # Column name candidates (CSV format may vary)
 CASE_NUMBER_COLS = [
@@ -1297,11 +1309,14 @@ def notify_calendar_url_once(config: dict, state: dict) -> bool:
 # the state file is not involved. Task creation is a single attempt (never auto-retried on a
 # lost response, which is how duplicates are born); 429 is the one safe exception.
 
+NOTION_API_VERSION = "2022-06-28"      # pinned for everything except the icon call (TASK_ICON_API_VERSION)
+
+
 def _notion_headers(token: str) -> dict:
     return {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28",
+        "Notion-Version": NOTION_API_VERSION,
     }
 
 
@@ -1388,11 +1403,15 @@ def ensure_tasks_schema(token: str) -> tuple[dict | None, str]:
     return props, ""
 
 
-def fetch_existing_task_keys(token: str) -> set[str] | None:
+def fetch_existing_task_keys(token: str, missing_icon: list[str] | None = None) -> set[str] | None:
     """All dedup keys already present in ✅ Tasks.
 
     Returns None if they cannot be read completely — the caller must then create nothing
     (fail-closed: a partial list would produce duplicates).
+
+    If `missing_icon` is given, the ids of those tasks that have NO icon are appended to it
+    (the query result carries the icon, so this costs no extra request). Meaningful only when
+    the function returns a set.
     """
     url = f"https://api.notion.com/v1/databases/{NOTION_TASKS_DB}/query"
     headers = _notion_headers(token)
@@ -1417,6 +1436,8 @@ def fetch_existing_task_keys(token: str) -> set[str] | None:
             key = "".join(t.get("plain_text", "") for t in rt).strip()
             if key:
                 keys.add(key)
+                if missing_icon is not None and page.get("id") and not page.get("icon"):
+                    missing_icon.append(page["id"])
 
         if not data.get("has_more"):
             return keys
@@ -1483,10 +1504,111 @@ def build_task_page(
     return body
 
 
+def _response_reason(r: requests.Response) -> str:
+    """«HTTP 400: <Notion's message>» for a failed response (trimmed)."""
+    try:
+        msg = (r.json() or {}).get("message", "")
+    except ValueError:
+        msg = ""
+    return (f"HTTP {r.status_code}: {msg}" if msg else f"HTTP {r.status_code}")[:300]
+
+
+_icon_native_rejected = False   # set once Notion refused the native format but took the fallback
+
+
+def _patch_task_icon(token: str, page_id: str, version: str, icon: dict) -> requests.Response:
+    """One PATCH /v1/pages/{id} that changes ONLY the icon. 429 is retried once (Notion did not
+    process a rate-limited request; setting the same icon twice is harmless anyway)."""
+    headers = _notion_headers(token)
+    headers["Notion-Version"] = version
+    for attempt in range(2):
+        r = requests.patch(
+            f"https://api.notion.com/v1/pages/{page_id}",
+            headers=headers,
+            json={"icon": icon},
+            timeout=30,
+        )
+        if r.status_code == 429 and attempt == 0:
+            ra = r.headers.get("Retry-After", "")
+            time.sleep(min(int(ra), 60) if ra.isdigit() else 5)
+            continue
+        break
+    return r
+
+
+def set_task_icon(token: str, page_id: str) -> tuple[bool, str]:
+    """Put the default icon (blue circle) on a task. Never raises — returns (ok, reason).
+
+    First the native format with the newer Notion-Version; only if Notion answers 400 to it,
+    the same icon as an external URL with the pinned version. 401/403/404/5xx are not retried
+    with another format: it would not help (403 = the integration lacks «Update content»)."""
+    global _icon_native_rejected
+    native = {"type": "icon", "icon": {"name": TASK_ICON_NAME, "color": TASK_ICON_COLOR}}
+    external = {"type": "external", "external": {"url": TASK_ICON_FALLBACK_URL}}
+    attempts = [(NOTION_API_VERSION, external)]
+    if not _icon_native_rejected:
+        attempts.insert(0, (TASK_ICON_API_VERSION, native))
+
+    why = ""
+    for i, (version, icon) in enumerate(attempts):
+        try:
+            r = _patch_task_icon(token, page_id, version, icon)
+        except requests.RequestException as e:
+            return False, type(e).__name__
+        if r.status_code == 200:
+            if i > 0:
+                _icon_native_rejected = True
+                log.warning(f"Tasks: native icon format refused ({why}) — using the external-URL icon")
+            return True, ""
+        why = _response_reason(r)
+        if r.status_code != 400:
+            return False, why
+    return False, why
+
+
+def _icon_for_new_task(token: str, created: requests.Response) -> None:
+    """Best effort right after a successful create: the task already exists, so nothing here
+    may turn it into a failure. A task left without an icon is fixed by the next run."""
+    try:
+        page_id = (created.json() or {}).get("id", "")
+        if not page_id:
+            return
+        ok, why = set_task_icon(token, page_id)
+        if not ok:
+            log.warning(f"  Task icon NOT set: {why} — the next run will retry")
+    except Exception as e:  # noqa: BLE001 — never break the create
+        log.warning(f"  Task icon NOT set: {type(e).__name__}")
+
+
+def backfill_task_icons(token: str, page_ids: list[str]) -> dict:
+    """Give the default icon to hearing tasks that exist WITHOUT one (made before this feature,
+    or whose icon call failed). The caller passes only pages whose icon is empty, so an icon
+    chosen by hand is never touched. Bounded and silent: failures go to the log, not Telegram."""
+    res = {"icons_set": 0, "icons_failed": 0}
+    in_a_row = 0
+    for page_id in page_ids[:TASK_ICON_BACKFILL_MAX]:
+        ok, why = set_task_icon(token, page_id)
+        if ok:
+            res["icons_set"] += 1
+            in_a_row = 0
+        else:
+            res["icons_failed"] += 1
+            in_a_row += 1
+            log.warning(f"  Task icon NOT set ({page_id}): {why}")
+            if in_a_row >= 3:
+                log.error("Tasks: 3 icon failures in a row — stopping the icon back-fill for this run")
+                break
+        time.sleep(TASK_CREATE_DELAY)
+    if len(page_ids) > TASK_ICON_BACKFILL_MAX:
+        log.info(f"Tasks: {len(page_ids) - TASK_ICON_BACKFILL_MAX} more without an icon — next run")
+    return res
+
+
 def create_notion_task(token: str, body: dict) -> tuple[bool, str]:
     """Create one task. Single attempt — a retry after a lost response could duplicate it
     (the next run's key check settles whether it was created). Only 429 is retried once:
-    Notion did not process a rate-limited request, so repeating it is safe."""
+    Notion did not process a rate-limited request, so repeating it is safe.
+    After a successful create the default icon is set by a separate best-effort call."""
     for attempt in range(2):
         try:
             r = requests.post(
@@ -1498,6 +1620,7 @@ def create_notion_task(token: str, body: dict) -> tuple[bool, str]:
         except requests.RequestException as e:
             return False, type(e).__name__
         if r.status_code == 200:
+            _icon_for_new_task(token, r)
             return True, ""
         if r.status_code == 429 and attempt == 0:
             ra = r.headers.get("Retry-After", "")
@@ -1523,7 +1646,8 @@ def sync_hearing_tasks(token: str, hearings_db: str, cases_map: dict) -> dict:
         res["error"] = err
         return res
 
-    existing = fetch_existing_task_keys(token)
+    missing_icon: list[str] = []      # existing hearing tasks that have no icon yet
+    existing = fetch_existing_task_keys(token, missing_icon)
     if existing is None:
         res["error"] = "не вдалося прочитати наявні таски — нові не створюю, щоб не було дублів"
         return res
@@ -1619,11 +1743,21 @@ def sync_hearing_tasks(token: str, hearings_db: str, cases_map: dict) -> dict:
                 break
         time.sleep(TASK_CREATE_DELAY)
 
+    # Hearing tasks that already existed without an icon (made before this feature, or whose
+    # icon call failed). Best effort: never an error of the run, never an alert.
+    res.update({"icons_set": 0, "icons_failed": 0})
+    if missing_icon:
+        try:
+            res.update(backfill_task_icons(token, missing_icon))
+        except Exception:  # noqa: BLE001 — cosmetic step must not break the sync
+            log.exception("Tasks: icon back-fill crashed")
+
     if res["failed"]:
         res["error"] = f"не створено {res['failed']} тасків ({first_error}); повторю наступного запуску"
     log.info(
         f"Tasks: created {res['created']}, already existed {res['existing']}, "
-        f"skipped {res['skipped']}, failed {res['failed']}"
+        f"skipped {res['skipped']}, failed {res['failed']}; "
+        f"icons back-filled {res['icons_set']} (failed {res['icons_failed']})"
     )
     return res
 
@@ -1647,7 +1781,7 @@ def sync_hearing_tasks_safe(config: dict, token: str, hearings_db: str, cases_ma
 
 def main():
     log.info("=" * 50)
-    log.info("Court Hearing Monitor v11 (cleanup archived cases + tasks per hearing)")
+    log.info("Court Hearing Monitor v12 (cleanup archived cases + tasks per hearing + task icon)")
     log.info("=" * 50)
 
     config = load_config()
